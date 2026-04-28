@@ -45,13 +45,13 @@ export function Hero() {
             src="/logo-flame.png"
             alt=""
             aria-hidden="true"
-            className="mx-auto mb-4 md:mb-6 w-40 sm:w-52 md:w-64 pointer-events-none select-none"
+            className="mx-auto mb-3 md:mb-4 w-28 sm:w-36 md:w-44 pointer-events-none select-none"
             style={{ mixBlendMode: 'multiply', opacity: 0.9 }}
           />
-          <h1 className="text-[2.25rem] sm:text-[4rem] md:text-[5.5rem] leading-[0.92] mb-4 md:mb-8 tracking-tight whitespace-pre-line">
+          <h1 className="text-[2rem] sm:text-[3rem] md:text-[4rem] leading-[0.95] mb-3 md:mb-6 tracking-tight whitespace-pre-line">
             {t('hero.title')}
           </h1>
-          <p className="text-base md:text-xl lg:text-2xl tracking-wide mb-8 md:mb-16 text-black/60 max-w-2xl mx-auto">
+          <p className="text-sm md:text-lg tracking-wide mb-6 md:mb-10 text-black/60 max-w-2xl mx-auto">
             {t('hero.subtitle')}
           </p>
           <button
