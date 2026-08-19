@@ -1,46 +1,45 @@
-# Feuoir Monorepo
+# feuoir
 
-Base escalable para e-commerce con frontend React y backend NestJS.
+E-commerce monorepo. The point of it is the API layout, not the shop.
 
-## Estructura
+## What is here
 
-- `apps/web`: frontend actual (prototipo Figma llevado a codigo).
-- `apps/api`: backend modular con enfoque SOLID.
-- `packages/shared`: tipos/contratos compartidos.
+```
+apps/web        React frontend, a Figma prototype taken to code
+apps/api        NestJS backend, layered
+packages/shared types and contracts both sides import
+```
 
-## API Foundation
+## The API
 
-El backend quedo preparado para crecer sin refactor fuerte:
+Each module is split into `domain`, `application`, `infrastructure` and
+`presentation`, so the business rules never import a framework and can be tested
+without one.
 
-- Separación por capas (`domain`, `application`, `infrastructure`, `presentation`).
-- Estado de orden separado de estado de pago.
-- Contrato de proveedor de pago (`PaymentProviderPort`) con implementacion inicial WhatsApp.
-- Endpoint payment-ready: `POST /api/orders/:id/payment-attempts`.
+Two decisions carry most of the weight:
 
-## Base de datos
+**Order state is separate from payment state.** An order that is confirmed and a
+payment that has not cleared are different facts, and collapsing them into one
+status field is where this kind of system usually starts to rot.
 
-Prisma schema inicial en `apps/api/prisma/schema.prisma` con:
+**Payments go through a port.** `PaymentProviderPort` is an interface; the
+current implementation happens to be WhatsApp-based, and swapping in a real
+gateway means writing one adapter rather than touching the order flow.
 
-- Catalogo: `Product`, `ProductVariant`, `InventoryItem`.
-- Clientes: `Customer`, `Address`.
-- Carrito: `Cart`, `CartItem`.
-- Ordenes: `Order`, `OrderItem`, `OrderAddress`, `OrderEvent`.
-- Pagos: `PaymentAttempt` para soportar WhatsApp hoy y gateway real despues.
+```
+POST /api/orders/:id/payment-attempts
+```
 
-## Comandos
+## Running it
 
 ```bash
 npm install
-npm run dev:web
-npm run dev:api
+npm run dev
 ```
 
-Para Prisma:
+## Status
 
-```bash
-cd apps/api
-cp .env.example .env
-npm run prisma:generate
-npm run prisma:migrate -- --name init
-npm run prisma:seed
-```
+The API foundation is in place; the catalogue and checkout are not finished.
+
+## Licence
+MIT
