@@ -83,4 +83,8 @@ So that this file does not promise more than the code delivers:
   not the shop's real orders — there is no `orders` table behind it.
 
 ## Licence
-MIT
+
+Proprietary. All rights reserved.
+
+No licence is granted to use, copy, modify or distribute this code. The
+repository being readable does not make it reusable.
