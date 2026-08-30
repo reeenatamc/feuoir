@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { categoryIcon } from '../lib/catalog';
 import type { Product } from '../types';
+import { fire } from '../theme/color';
 
 export function ProductCard({ product, onSelect }: { product: Product; onSelect: (product: Product) => void }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -15,14 +16,14 @@ export function ProductCard({ product, onSelect }: { product: Product; onSelect:
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onSelect(product)}
     >
-      <div className="aspect-square bg-[#fafafa] mb-4 md:mb-6 relative overflow-hidden">
+      <div className="aspect-square bg-surface-sunken mb-4 md:mb-6 relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="w-full h-full relative">
             <div
               className="absolute inset-0 transition-opacity duration-500"
               style={{
                 opacity: isHovered ? 0.6 : 0,
-                background: 'radial-gradient(circle at center, rgba(255,90,31,0.15) 0%, transparent 70%)',
+                background: `radial-gradient(circle at center, ${fire('orange', 15)} 0%, transparent 70%)`,
               }}
             />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -32,7 +33,7 @@ export function ProductCard({ product, onSelect }: { product: Product; onSelect:
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-          <span className="px-4 py-2 md:px-7 md:py-3 bg-white text-black text-[10px] md:text-xs tracking-widest uppercase border border-black">
+          <span className="px-4 py-2 md:px-7 md:py-3 bg-surface text-ink text-[10px] md:text-xs tracking-widest uppercase border border-ink">
             {t('product.view')}
           </span>
         </div>
@@ -40,7 +41,7 @@ export function ProductCard({ product, onSelect }: { product: Product; onSelect:
 
       <div className="space-y-1.5">
         <h3 className="text-xs md:text-sm tracking-wide leading-snug">{product.name}</h3>
-        <p className="text-black/35 tracking-wider text-xs md:text-sm">${product.price}</p>
+        <p className="text-ink/35 tracking-wider text-xs md:text-sm">${product.price}</p>
       </div>
     </div>
   );

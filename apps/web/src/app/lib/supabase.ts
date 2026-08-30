@@ -9,7 +9,7 @@ function requireEnv(name: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): strin
   const value = import.meta.env[name];
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(
-      `Falta la variable de entorno ${name}. Copiá apps/web/.env.example a apps/web/.env y completala.`
+      `Falta la variable de entorno ${name}. Copia apps/web/.env.example a apps/web/.env y complétala.`
     );
   }
   return value;

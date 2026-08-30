@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useTransitionNavigate } from '../lib/navigation';
 import { LogOut, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase, settingsToDb, logSupabaseError } from '../lib/supabase';
@@ -13,7 +13,7 @@ import type { Product, CartItem, Settings } from '../types';
 
 const settingsFields = [
   { key: 'businessName', tKey: 'admin.config.businessName', type: 'text',   placeholder: 'Feuoir' },
-  { key: 'whatsapp',     tKey: 'admin.config.whatsapp',     type: 'tel',    placeholder: '+54 9 11 1234 5678' },
+  { key: 'whatsapp',     tKey: 'admin.config.whatsapp',     type: 'tel',    placeholder: '+1 555 123 4567' },
   { key: 'currency',     tKey: 'admin.config.currency',     type: 'text',   placeholder: 'USD' },
   { key: 'shippingCost', tKey: 'admin.config.shippingCost', type: 'number', placeholder: '10' },
   { key: 'taxRate',      tKey: 'admin.config.taxRate',      type: 'number', placeholder: '0' },
@@ -30,7 +30,7 @@ export function AdminPanel({
   onUpdateSettings:  (updates: Partial<Settings>) => void;
   onLogout:          () => void;
 }) {
-  const navigate = useNavigate();
+  const navigate = useTransitionNavigate();
   const { t } = useTranslation();
   const [tab, setTab]             = useState<'products' | 'orders' | 'config'>('products');
   const [products, setProducts]   = useState<Product[]>([]);
@@ -153,25 +153,25 @@ export function AdminPanel({
   const activeCount = products.filter((p) => p.status === 'active').length;
 
   return (
-    <section className="min-h-screen bg-[#fafafa] pb-20">
+    <section className="min-h-screen bg-surface-sunken pb-20">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
 
         {/* Header */}
-        <div className="py-8 md:py-12 border-b border-black/8 mb-8 md:mb-10 flex items-end justify-between">
+        <div className="py-8 md:py-12 border-b border-ink/8 mb-8 md:mb-10 flex items-end justify-between">
           <div>
-            <p className="text-[10px] tracking-[0.35em] uppercase text-black/30 mb-1.5">Feuoir</p>
+            <p className="text-[10px] tracking-[0.35em] uppercase text-ink/30 mb-1.5">Feuoir</p>
             <h1 className="text-2xl md:text-4xl tracking-tight">{t('admin.title')}</h1>
           </div>
           <div className="flex items-center gap-4 pb-1">
             <button
               onClick={() => navigate('/')}
-              className="text-[10px] tracking-[0.25em] uppercase text-black/30 hover:text-black/60 transition-colors hidden sm:block"
+              className="text-[10px] tracking-[0.25em] uppercase text-ink/30 hover:text-ink/60 transition-colors hidden sm:block"
             >
               {t('admin.viewSite')}
             </button>
             <button
               onClick={() => { onLogout(); navigate('/admin/login', { replace: true }); }}
-              className="flex items-center gap-1.5 text-[10px] tracking-[0.25em] uppercase text-black/30 hover:text-black/60 transition-colors"
+              className="flex items-center gap-1.5 text-[10px] tracking-[0.25em] uppercase text-ink/30 hover:text-ink/60 transition-colors"
             >
               <LogOut size={12} />
               {t('admin.logout')}
@@ -187,15 +187,15 @@ export function AdminPanel({
             { label: t('admin.stats.orders'),   value: orders.length },
             { label: t('admin.stats.revenue'),  value: `${settings.currency} ${total}` },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-white border border-black/5 p-4 md:p-6">
-              <p className="text-[10px] tracking-[0.3em] uppercase text-black/30 mb-2">{label}</p>
+            <div key={label} className="bg-surface border border-ink/5 p-4 md:p-6">
+              <p className="text-[10px] tracking-[0.3em] uppercase text-ink/30 mb-2">{label}</p>
               <p className="text-xl md:text-2xl tracking-tight">{value}</p>
             </div>
           ))}
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-black/8 mb-8">
+        <div className="flex border-b border-ink/8 mb-8">
           {([
             { id: 'products', label: t('admin.tabs.products') },
             { id: 'orders',   label: t('admin.tabs.orders') },
@@ -206,8 +206,8 @@ export function AdminPanel({
               onClick={() => setTab(id)}
               className={`px-5 py-3 text-sm tracking-wide border-b-2 -mb-[2px] transition-colors ${
                 tab === id
-                  ? 'border-black text-black'
-                  : 'border-transparent text-black/35 hover:text-black/60'
+                  ? 'border-ink text-ink'
+                  : 'border-transparent text-ink/35 hover:text-ink/60'
               }`}
             >
               {label}
@@ -231,15 +231,15 @@ export function AdminPanel({
             {loadingP ? (
               <div className="space-y-4 py-4">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-12 bg-white animate-pulse" />
+                  <div key={i} className="h-12 bg-surface animate-pulse" />
                 ))}
               </div>
             ) : (
               <table className="w-full min-w-[560px]">
                 <thead>
-                  <tr className="border-b border-black/8">
+                  <tr className="border-b border-ink/8">
                     {[t('admin.table.product'), t('admin.table.category'), t('admin.table.price'), t('admin.table.status'), ''].map((h) => (
-                      <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-black/30 font-normal text-left pr-6 last:pr-0 last:text-right">
+                      <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-ink/30 font-normal text-left pr-6 last:pr-0 last:text-right">
                         {h}
                       </th>
                     ))}
@@ -250,17 +250,17 @@ export function AdminPanel({
                     const Icon = categoryIcon(product.category);
                     const isEditing = editingId === product.id;
                     return (
-                      <tr key={product.id} className="border-b border-black/5 group">
+                      <tr key={product.id} className="border-b border-ink/5 group">
                         <td className="py-4 pr-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-[#fafafa] flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 bg-surface-sunken flex items-center justify-center shrink-0">
                               <Icon size={14} className="opacity-30" strokeWidth={1.5} />
                             </div>
                             {isEditing ? (
                               <input
                                 value={editValues.name ?? product.name}
                                 onChange={(e) => setEditValues({ ...editValues, name: e.target.value })}
-                                className="border-b border-black/20 bg-transparent focus:border-black focus:outline-none text-sm py-0.5 w-40 md:w-52"
+                                className="border-b border-ink/20 bg-transparent focus:border-ink focus:outline-none text-sm py-0.5 w-40 md:w-52"
                                 autoFocus
                               />
                             ) : (
@@ -269,19 +269,19 @@ export function AdminPanel({
                           </div>
                         </td>
                         <td className="py-4 pr-6">
-                          <span className="text-xs text-black/40 tracking-wide">
+                          <span className="text-xs text-ink/40 tracking-wide">
                             {t(categoryLabelKey(product.category), product.category)}
                           </span>
                         </td>
                         <td className="py-4 pr-6">
                           {isEditing ? (
                             <div className="flex items-center gap-1">
-                              <span className="text-xs text-black/40">$</span>
+                              <span className="text-xs text-ink/40">$</span>
                               <input
                                 type="number"
                                 value={editValues.price ?? product.price}
                                 onChange={(e) => setEditValues({ ...editValues, price: Number(e.target.value) })}
-                                className="w-16 border-b border-black/20 bg-transparent focus:border-black focus:outline-none text-sm py-0.5"
+                                className="w-16 border-b border-ink/20 bg-transparent focus:border-ink focus:outline-none text-sm py-0.5"
                               />
                             </div>
                           ) : (
@@ -302,13 +302,13 @@ export function AdminPanel({
                               <button
                                 onClick={saveEdit}
                                 disabled={saving}
-                                className="text-xs tracking-wide text-black hover:opacity-60 transition-opacity disabled:opacity-40"
+                                className="text-xs tracking-wide text-ink hover:opacity-60 transition-opacity disabled:opacity-40"
                               >
                                 {saving ? t('admin.table.saving') : t('admin.table.save')}
                               </button>
                               <button
                                 onClick={cancelEdit}
-                                className="text-xs tracking-wide text-black/30 hover:text-black/60 transition-colors"
+                                className="text-xs tracking-wide text-ink/30 hover:text-ink/60 transition-colors"
                               >
                                 {t('admin.table.cancel')}
                               </button>
@@ -316,7 +316,7 @@ export function AdminPanel({
                           ) : (
                             <button
                               onClick={() => startEdit(product)}
-                              className="text-xs tracking-wide text-black/25 hover:text-black/60 transition-colors opacity-0 group-hover:opacity-100"
+                              className="text-xs tracking-wide text-ink/25 hover:text-ink/60 transition-colors opacity-0 group-hover:opacity-100"
                             >
                               {t('admin.table.edit')}
                             </button>
@@ -336,19 +336,19 @@ export function AdminPanel({
           <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0">
             {orders.length === 0 ? (
               <div className="py-16 text-center">
-                <p className="text-sm tracking-wide text-black/30">{t('admin.table.noOrders')}</p>
+                <p className="text-sm tracking-wide text-ink/30">{t('admin.table.noOrders')}</p>
               </div>
             ) : (
               <table className="w-full min-w-[400px]">
                 <thead>
-                  <tr className="border-b border-black/8">
+                  <tr className="border-b border-ink/8">
                     {[
                       t('admin.table.number'),
                       t('admin.table.product'),
                       t('admin.table.price'),
                       t('admin.table.status'),
                     ].map((h) => (
-                      <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-black/30 font-normal text-left pr-6 last:pr-0">
+                      <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-ink/30 font-normal text-left pr-6 last:pr-0">
                         {h}
                       </th>
                     ))}
@@ -356,8 +356,8 @@ export function AdminPanel({
                 </thead>
                 <tbody>
                   {orders.map((item, i) => (
-                    <tr key={i} className="border-b border-black/5">
-                      <td className="py-4 pr-6 text-xs text-black/25 tracking-widest">
+                    <tr key={i} className="border-b border-ink/5">
+                      <td className="py-4 pr-6 text-xs text-ink/25 tracking-widest">
                         #{String(i + 1).padStart(3, '0')}
                       </td>
                       <td className="py-4 pr-6 text-sm tracking-wide">{item.product.name}</td>
@@ -371,8 +371,8 @@ export function AdminPanel({
                       </td>
                     </tr>
                   ))}
-                  <tr className="border-t-2 border-black">
-                    <td colSpan={2} className="pt-5 text-xs tracking-[0.3em] uppercase text-black/40">{t('admin.table.total')}</td>
+                  <tr className="border-t-2 border-ink">
+                    <td colSpan={2} className="pt-5 text-xs tracking-[0.3em] uppercase text-ink/40">{t('admin.table.total')}</td>
                     <td className="pt-5 text-sm font-medium">{settings.currency} {total}</td>
                     <td />
                   </tr>
@@ -385,11 +385,11 @@ export function AdminPanel({
         {/* ── Config ── */}
         {tab === 'config' && (
           <div className="max-w-lg space-y-8">
-            <p className="text-xs tracking-wide text-black/40 leading-relaxed">{t('admin.config.description')}</p>
+            <p className="text-xs tracking-wide text-ink/40 leading-relaxed">{t('admin.config.description')}</p>
 
             {settingsFields.map(({ key, tKey, type, placeholder }) => (
               <div key={key} className="space-y-2">
-                <label className="block text-[10px] tracking-[0.3em] uppercase text-black/40">
+                <label className="block text-[10px] tracking-[0.3em] uppercase text-ink/40">
                   {t(tKey)}
                 </label>
                 <input
@@ -399,7 +399,7 @@ export function AdminPanel({
                   onChange={(e) =>
                     updateLocal({ [key]: type === 'number' ? Number(e.target.value) : e.target.value })
                   }
-                  className="w-full py-3 bg-transparent border-b border-black/15 focus:border-black focus:outline-none text-sm tracking-wide transition-colors placeholder:text-black/20"
+                  className="w-full py-3 bg-transparent border-b border-ink/15 focus:border-ink focus:outline-none text-sm tracking-wide transition-colors placeholder:text-ink/20"
                 />
               </div>
             ))}
@@ -407,18 +407,18 @@ export function AdminPanel({
             <button
               onClick={saveSettings}
               disabled={!settingsDirty || savingSettings}
-              className="flex items-center gap-2 px-6 py-3 bg-black text-white text-[11px] tracking-[0.25em] uppercase hover:bg-black/80 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-6 py-3 bg-ink text-ink-inverse text-[11px] tracking-[0.25em] uppercase hover:bg-ink/80 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
             >
               <Save size={13} />
               {savingSettings ? t('admin.config.saving') : t('admin.config.save')}
             </button>
 
             {localSettings.whatsapp && (
-              <div className="border border-black/8 p-4 space-y-1">
-                <p className="text-[10px] tracking-[0.3em] uppercase text-black/30">
+              <div className="border border-ink/8 p-4 space-y-1">
+                <p className="text-[10px] tracking-[0.3em] uppercase text-ink/30">
                   {t('admin.config.checkoutPreview')}
                 </p>
-                <p className="text-xs text-black/50 font-mono break-all">
+                <p className="text-xs text-ink/50 font-mono break-all">
                   wa.me/{localSettings.whatsapp.replace(/\D/g, '')}
                 </p>
               </div>

@@ -11,7 +11,7 @@ export function ProtectedRoute({
   children: ReactNode;
 }) {
   // Don't flash the login page while Supabase checks the existing session
-  if (authLoading) return <div className="min-h-screen bg-white" />;
+  if (authLoading) return <div className="min-h-screen bg-surface" />;
   if (!isAuthenticated) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 }

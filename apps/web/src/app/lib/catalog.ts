@@ -7,7 +7,7 @@ import type { Product } from '../types';
  * Antes estaba duplicada en AdminPanel, Customizer y ProductCard, con
  * distinto contenido en cada copia.
  *
- * Los NOMBRES visibles de cada categoria no viven aca: salen de i18n
+ * Los NOMBRES visibles de cada categoria no viven aqui: salen de i18n
  * (`product.category.<categoria>`), para que se traduzcan.
  */
 const CATEGORY_ICONS: Record<string, LucideIcon> = {

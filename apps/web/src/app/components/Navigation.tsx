@@ -1,133 +1,181 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
-import { Menu, X, ShoppingBag, Globe } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { TransitionLink } from '../lib/navigation';
+import { ROUTES } from '../content/vocabulary';
+import { pad2 } from '../content/series';
+
+/** Las etiquetas se resuelven en el render, no aqui: si se guardaran ya
+ *  traducidas, cambiar de idioma no las actualizaria. */
+const NAV_LINKS = [
+  { tKey: 'feuoirNav.objects', to: ROUTES.objects },
+  { tKey: 'feuoirNav.archive', to: ROUTES.archive },
+  { tKey: 'feuoirNav.commissions', to: ROUTES.commissions },
+];
+
+/**
+ * Tratamiento tipografico unico para todo lo que no es el logotipo: cuerpo
+ * pequeno y tracking abierto. La jerarquia la da el tamano y el espacio, no el
+ * peso ni el color, que es lo que mantiene la barra en registro editorial.
+ */
+const NAV_TYPE = 'text-[10px] tracking-[0.26em] uppercase';
 
 export function Navigation({ cartCount = 0 }: { cartCount?: number }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
+  const [indexOpen, setIndexOpen] = useState(false);
   const { t, i18n } = useTranslation();
+
+  // En el home el logotipo grande del hero ya dice quien es: repetirlo en la
+  // barra no agrega informacion y le quita aire al encabezado. Fuera del home no
+  // hay nada mas que lo diga, y ahi la marca vuelve, en pequeno.
+  const isHome = useLocation().pathname === '/';
 
   const toggleLang = () => {
     i18n.changeLanguage(i18n.language === 'es' ? 'en' : 'es');
   };
 
-  const navAndClose = (to: string) => {
-    navigate(to);
-    setMenuOpen(false);
-  };
+  // El indice cubre la pantalla: dejar la pagina scrolleando por debajo se siente
+  // roto, y al cerrarlo el lector reaparece en un punto distinto del que dejo.
+  useEffect(() => {
+    if (!indexOpen) return;
+
+    const previo = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const alEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIndexOpen(false);
+    };
+    window.addEventListener('keydown', alEscape);
+
+    return () => {
+      document.body.style.overflow = previo;
+      window.removeEventListener('keydown', alEscape);
+    };
+  }, [indexOpen]);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="flex items-center justify-between h-16 md:h-20">
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 nav-bar">
+        <div className="max-w-[1600px] mx-auto px-6 md:px-10">
+          <div className="relative flex items-center justify-between h-16 md:h-20">
 
-          <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-70">
-            <img
-              src="/logo-flame.png"
-              alt="Feuoir"
-              style={{
-                height: '34px',
-                width: '22px',
-                objectFit: 'cover',
-                objectPosition: '50% 32%',
-                mixBlendMode: 'multiply',
-              }}
-            />
-            <span className="tracking-[0.3em] uppercase text-sm">feuoir</span>
-          </Link>
-
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-10 lg:gap-12">
-            <Link to="/shop"   className="text-sm tracking-wide transition-opacity hover:opacity-60">{t('nav.shop')}</Link>
-            <Link to="/custom" className="text-sm tracking-wide transition-opacity hover:opacity-60">{t('nav.customize')}</Link>
-            <Link to="/about"  className="text-sm tracking-wide transition-opacity hover:opacity-60">{t('nav.about')}</Link>
-            <Link
-              to="/cart"
-              className="px-5 py-2 bg-black text-white text-sm transition-all hover:bg-black/80"
-            >
-              {cartCount > 0 ? t('nav.cartCount', { count: cartCount }) : t('nav.cart')}
-            </Link>
-
-            {/* Language switcher */}
-            <button
-              onClick={toggleLang}
-              className="flex items-center gap-1 text-[10px] tracking-[0.25em] uppercase text-black/30 hover:text-black/60 transition-colors"
-            >
-              <Globe size={11} />
-              {i18n.language === 'es' ? 'EN' : 'ES'}
-            </button>
-
-            <Link
-              to="/admin"
-              className="text-[10px] tracking-[0.3em] uppercase text-black/20 hover:text-black/45 transition-colors"
-            >
-              {t('nav.admin')}
-            </Link>
-          </div>
-
-          {/* Mobile controls */}
-          <div className="flex md:hidden items-center gap-1">
-            <Link
-              to="/cart"
-              className="relative w-11 h-11 flex items-center justify-center transition-opacity hover:opacity-60"
-              aria-label={t('nav.cart')}
-            >
-              <ShoppingBag size={19} strokeWidth={1.5} />
-              {cartCount > 0 && (
-                <span className="absolute top-2 right-2 w-[15px] h-[15px] bg-black text-white text-[8px] font-medium rounded-full flex items-center justify-center leading-none">
-                  {cartCount}
-                </span>
+            {/* El hueco se mantiene aunque no haya marca: sin el, el resto de la
+                barra se recoloca al cambiar de ruta y la nav "salta". */}
+            <div className="flex items-center">
+              {!isHome && (
+                <TransitionLink
+                  to="/"
+                  className="flex items-center gap-2 text-sm lowercase transition-opacity hover:opacity-60"
+                  aria-label={t('brand.home')}
+                >
+                  <img src="/flame.png" alt="" aria-hidden="true" className="nav-mark-flame" />
+                  <span aria-hidden="true">feuoir</span>
+                </TransitionLink>
               )}
-            </Link>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="w-11 h-11 flex items-center justify-center transition-opacity hover:opacity-60"
-              aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
-              aria-expanded={menuOpen}
-            >
-              {menuOpen ? <X size={19} strokeWidth={1.5} /> : <Menu size={19} strokeWidth={1.5} />}
-            </button>
+            </div>
+
+            {/* Centrados desde `lg`. Por debajo vuelven al flujo: el
+                posicionamiento absoluto los saca de el y se superponen con las
+                utilidades de la derecha. */}
+            <div className="hidden md:flex items-center gap-8 lg:gap-14 lg:absolute lg:left-1/2 lg:-translate-x-1/2">
+              {NAV_LINKS.map(({ tKey, to }) => (
+                <TransitionLink
+                  key={to}
+                  to={to}
+                  className={`${NAV_TYPE} transition-opacity hover:opacity-55`}
+                >
+                  {t(tKey)}
+                </TransitionLink>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-5 md:gap-7">
+              <button
+                onClick={toggleLang}
+                className={`${NAV_TYPE} hidden md:inline text-ink/45 hover:text-ink transition-colors`}
+                aria-label={i18n.language === 'es' ? 'Switch to English' : 'Cambiar a español'}
+              >
+                <span aria-hidden="true">{i18n.language === 'es' ? 'ES / en' : 'es / EN'}</span>
+              </button>
+
+              {/* En movil es la unica via a las secciones; en desktop convive
+                  con los enlaces del centro como acceso secundario, el que da la
+                  vista completa del sitio de una sola vez. */}
+              <button
+                onClick={() => setIndexOpen(true)}
+                className={`${NAV_TYPE} text-ink/45 hover:text-ink transition-colors`}
+                aria-expanded={indexOpen}
+              >
+                {t('feuoirNav.index')}
+              </button>
+
+              {/* Sin icono de carrito: un pictograma de ecommerce dice "tienda"
+                  antes que cualquier otra cosa. El contador alcanza. */}
+              <TransitionLink
+                to={ROUTES.bag}
+                className={`${NAV_TYPE} tabular-nums transition-opacity hover:opacity-60`}
+              >
+                {t('feuoirNav.bag')} {pad2(cartCount)}
+              </TransitionLink>
+            </div>
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* Mobile dropdown */}
-      {menuOpen && (
-        <div className="md:hidden bg-white/97 backdrop-blur-md border-t border-black/5">
-          <div className="max-w-7xl mx-auto px-6 pb-3">
-            {[
-              { label: t('nav.shop'),      to: '/shop' },
-              { label: t('nav.customize'), to: '/custom' },
-              { label: t('nav.about'),     to: '/about' },
-            ].map(({ label, to }) => (
-              <button
+      {/* Indice a pantalla completa, en lugar del desplegable con hamburguesa:
+          misma funcion, registro editorial. Se abre en cualquier tamano, asi que
+          repite las medidas de la barra (alto, margenes, ancho maximo) para que
+          al abrirlo la marca y el cierre caigan donde ya estaban. */}
+      {indexOpen && (
+        <div className="fixed inset-0 z-[60] bg-surface flex flex-col">
+          <div className="w-full max-w-[1600px] mx-auto px-6 md:px-10 flex items-center justify-between h-16 md:h-20">
+            <span className="flex items-center gap-2 text-sm lowercase">
+              <img src="/flame.png" alt="" aria-hidden="true" className="nav-mark-flame" />
+              feuoir
+            </span>
+            <button onClick={() => setIndexOpen(false)} className={`${NAV_TYPE} text-ink/45`}>
+              {t('feuoirNav.close')}
+            </button>
+          </div>
+
+          <div className="flex-1 w-full max-w-[1600px] mx-auto flex flex-col justify-center px-6 md:px-10 pb-24">
+            {NAV_LINKS.map(({ tKey, to }, i) => (
+              // Enlaces y no botones: se abren en otra pestana con el modificador,
+              // el navegador anuncia a donde llevan, y el teclado los recorre como
+              // navegacion y no como controles sueltos.
+              <TransitionLink
                 key={to}
-                onClick={() => navAndClose(to)}
-                className="w-full text-left py-4 text-sm tracking-wide border-b border-black/5 last:border-0 transition-opacity hover:opacity-60 active:opacity-40"
+                to={to}
+                onClick={() => setIndexOpen(false)}
+                className="text-left py-5 md:py-8 border-b border-ink/10 flex items-baseline gap-5 md:gap-10 transition-opacity hover:opacity-55"
               >
-                {label}
-              </button>
+                {/* El ordinal es decorativo: sin ocultarlo, el nombre accesible
+                    del enlace pasa a ser "01 Objetos". */}
+                <span
+                  aria-hidden="true"
+                  className="text-[10px] tracking-[0.26em] text-ink/35 tabular-nums"
+                >
+                  {pad2(i + 1)}
+                </span>
+                {/* A pantalla completa el enlace es el contenido, no una entrada
+                    de menu: crece con el ancho como creceria un titular. */}
+                <span className="text-2xl md:text-5xl lg:text-6xl tracking-[-0.02em]">
+                  {t(tKey)}
+                </span>
+              </TransitionLink>
             ))}
 
-            {/* Language switcher mobile */}
+            {/* Mismo nombre accesible que su gemelo de la barra: el texto visible
+                dice a que idioma, la etiqueta dice que la accion es cambiarlo. */}
             <button
               onClick={toggleLang}
-              className="w-full text-left py-4 flex items-center gap-2 text-xs tracking-widest uppercase text-black/35 border-b border-black/5 transition-opacity hover:opacity-60"
+              aria-label={i18n.language === 'es' ? 'Switch to English' : 'Cambiar a español'}
+              className="text-left py-5 md:py-8 text-[10px] tracking-[0.26em] uppercase text-ink/45 hover:text-ink transition-colors"
             >
-              <Globe size={12} />
-              {i18n.language === 'es' ? 'English' : 'Español'}
-            </button>
-
-            <button
-              onClick={() => navAndClose('/admin')}
-              className="w-full text-left py-4 text-[10px] tracking-[0.3em] uppercase text-black/25 transition-opacity hover:opacity-60"
-            >
-              {t('nav.admin')}
+              <span aria-hidden="true">{i18n.language === 'es' ? 'English' : 'Español'}</span>
             </button>
           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 }

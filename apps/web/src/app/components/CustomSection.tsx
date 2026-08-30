@@ -1,5 +1,6 @@
-import { Link } from 'react-router';
+import { TransitionLink } from '../lib/navigation';
 import { useTranslation } from 'react-i18next';
+import { fireGradient } from '../theme/color';
 
 export function CustomSection() {
   const { t } = useTranslation();
@@ -9,16 +10,16 @@ export function CustomSection() {
       <div className="max-w-xl text-center space-y-8">
         <div
           className="w-12 h-[3px] mx-auto"
-          style={{ background: 'linear-gradient(90deg, #FF5A1F 0%, #C1121F 100%)' }}
+          style={{ background: fireGradient([['orange'], ['red']]) }}
         />
         <h2 className="text-3xl md:text-5xl tracking-tight">{t('custom.title')}</h2>
-        <p className="text-base md:text-lg tracking-wide text-black/55 leading-relaxed">{t('custom.description')}</p>
-        <Link
+        <p className="text-base md:text-lg tracking-wide text-ink/55 leading-relaxed">{t('custom.description')}</p>
+        <TransitionLink
           to="/shop"
-          className="inline-block w-full sm:w-auto px-10 py-4 bg-black text-white text-xs tracking-[0.3em] uppercase hover:bg-black/80 active:bg-black/70 transition-colors"
+          className="inline-block w-full sm:w-auto px-10 py-4 bg-ink text-ink-inverse text-xs tracking-[0.3em] uppercase hover:bg-ink/80 active:bg-ink/70 transition-colors"
         >
           {t('custom.cta')}
-        </Link>
+        </TransitionLink>
       </div>
     </section>
   );
