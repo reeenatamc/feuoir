@@ -1,0 +1,394 @@
+/**
+ * Tokens de los modos de interfaz. El modo activo se elige con el atributo
+ * `data-ui-mode` en <html> (lo pone `app/theme/ui-mode.ts`).
+ *
+ * Los componentes NO conocen los modos: escriben `bg-surface`, `text-ink/60`,
+ * `border-ink/8`, y este archivo decide que significa cada cosa. Agregar un modo
+ * nuevo es agregar un bloque aqui, sin tocar un solo .tsx.
+ *
+ * Los selectores son `html[data-ui-mode=...]` y no `[data-ui-mode=...]` a
+ * proposito: `:root` en theme.css tiene la misma especificidad que un selector
+ * de atributo suelto, y ahi el desempate seria el orden de los @import. Con el
+ * `html` adelante estos tokens ganan siempre, sin depender de ese orden.
+ */
+
+/**
+ * Fotografia del hero: dos tokens, no uno.
+ *
+ * `--hero-image-src` dice CUAL es la foto. `--hero-image` dice si ESTE modo usa
+ * foto. Son decisiones de dueños distintos: la primera la toma quien administra
+ * la tienda desde el panel, la segunda es una eleccion de diseño de cada modo
+ * -- el sobrio vale `none` a proposito, su hero es superficie limpia.
+ *
+ * Con un solo token no se pueden separar. La foto configurada se escribe en
+ * tiempo de ejecucion como estilo en linea sobre <html>, que gana a cualquier
+ * hoja de estilos, asi que le aparecerian tambien al modo sobrio. Con dos, ese
+ * modo no menciona `--hero-image-src` en ninguna parte y es inmune a lo que se
+ * escriba ahi.
+ *
+ * El valor por defecto es la foto empaquetada, y esa es la red de seguridad de
+ * toda la funcion: con la API caida, sin foto cargada o con el JavaScript sin
+ * llegar a correr, la portada se pinta igual.
+ */
+:root {
+  /* El primer fotograma del video empaquetado, no una foto aparte: asi el
+     momento en que el video arranca no es un corte a otra imagen. */
+  --hero-image-src: url('/hero-poster.webp');
+  /* Encuadre. Lo pisa el punto focal que se marca en el panel. */
+  --hero-position: center;
+}
+
+/* AVIF pesa un 15% menos que el WebP del mismo poster. Va detras de un
+   `@supports` y no directo en la regla de arriba porque un `image-set()` que el
+   navegador no entienda invalida la declaracion entera y dejaria el hero sin
+   fondo: es una mejora, no un requisito. */
+@supports (background-image: image-set(url('/hero-poster.avif') type('image/avif'))) {
+  :root {
+    --hero-image-src: image-set(
+      url('/hero-poster.avif') type('image/avif'),
+      url('/hero-poster.webp') type('image/webp')
+    );
+  }
+}
+
+/* ── Bored: la interfaz sobria. Reproduce exactamente los valores que estaban
+      hardcodeados en los componentes (#fff, #000, #fafafa). ───────────────── */
+html[data-ui-mode='bored'] {
+  --surface: #ffffff;
+  --surface-sunken: #fafafa;
+  --surface-hover: #fafafa;
+  --surface-nav: rgb(255 255 255 / 0.8);
+  --surface-nav-open: rgb(255 255 255 / 0.97);
+  --nav-blur: blur(12px);
+
+  /* Hero centrado, tipografia contenida, CTA como boton macizo. */
+  --hero-align: center;
+  --hero-content-max: 56rem;
+  --hero-content-mx: auto;
+  --hero-title-size: clamp(2rem, 7vw, 4rem);
+  --hero-title-leading: 0.95;
+  --hero-title-weight: 500;
+  --hero-title-tracking: -0.02em;
+  --hero-sub-max: 42rem;
+  --hero-sub-mx: auto;
+  --cta-bg: var(--ink);
+  --cta-color: var(--ink-inverse);
+  --cta-padding: 1rem 3rem;
+  --cta-border: 0 solid transparent;
+  --cta-arrow-display: none;
+  /* Hero centrado: cualquier sangria descentraria el boton respecto del bloque. */
+  --cta-indent: 0;
+  --nav-border: color-mix(in srgb, var(--ink) 5%, transparent);
+
+  --ink: #000000;
+  --ink-inverse: #ffffff;
+
+  --fire-orange: #ff5a1f;
+  --fire-red: #c1121f;
+  --fire-yellow: #ffc300;
+
+  /* Los halos radiales del Hero y del CTA. Discretos en este modo. */
+  --glow-hero: 0.2;
+  --glow-cta: 0.3;
+  --glow-blur: 150px;
+
+  --motion-slow: 500ms;
+
+  /* El logo es un PNG con fondo blanco: sobre superficie clara se funde con
+     `multiply`, pero sobre superficie oscura eso lo borraria. */
+  /* El hero de este modo es superficie limpia: sin foto de fondo. */
+  --hero-image: none;
+  --hero-scrim: none;
+
+  --logo-opacity: 0.9;
+}
+
+/* ── Cool: oscuro y con el fuego de la marca al frente. ───────────────────── */
+html[data-ui-mode='cool'] {
+  /* Negros con una pizca de calido, no grises neutros: acompañan al fuego. */
+  --surface: #0a0807;
+  --surface-sunken: #131010;
+  --surface-hover: #1c1817;
+  --surface-nav: transparent;
+  --nav-blur: none;
+
+  /* Hero anclado a la izquierda, titular a escala de cartel y CTA como enlace
+     subrayado con flecha. El logo sale del hero: la marca ya vive en la nav y
+     repetirla le quita aire al titular. */
+  --hero-align: left;
+  --hero-content-max: 44rem;
+  --hero-content-mx: 0;
+  --hero-title-size: clamp(2.6rem, 7.4vw, 6rem);
+  --hero-title-leading: 0.9;
+  /* A escala de cartel Inter necesita tracking negativo fuerte y peso alto,
+     o el titular se desarma en letras sueltas. */
+  --hero-title-weight: 700;
+  --hero-title-tracking: -0.035em;
+  --hero-sub-max: 26rem;
+  --hero-sub-mx: 0;
+  --cta-bg: transparent;
+  --cta-color: var(--ink);
+  --cta-padding: 0.6rem 0;
+  --cta-border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  --cta-arrow-display: inline-block;
+  /* Sangria de la referencia. Titular, reclamo y codigo de serie comparten el
+     margen de pagina; que el CTA no lo comparta es lo que separa una portada de
+     un container centrado con texto a la izquierda.
+     Escala con el ancho: en movil el margen de pagina es de 1.5rem y una
+     sangria fija de 2.25rem se comeria un sexto de la pantalla. */
+  --cta-indent: clamp(1.25rem, 2.4vw, 2.25rem);
+  --nav-border: transparent;
+  /* El desplegable movil si necesita fondo: son items de menu que tienen que
+     leerse, y solo aparece cuando lo abris. */
+  --surface-nav-open: rgb(10 8 7 / 0.97);
+
+  --ink: #f7f3f0;
+  --ink-inverse: #0a0807;
+
+  /* Mas saturados: sobre fondo oscuro los mismos hex se ven apagados. */
+  --fire-orange: #ff6b2c;
+  --fire-red: #e01e2b;
+  --fire-yellow: #ffcf33;
+
+  /* Aqui el halo es el efecto, no un detalle: sube fuerte y se difunde menos. */
+  --glow-hero: 0.55;
+  --glow-cta: 0.7;
+  --glow-blur: 120px;
+
+  --motion-slow: 700ms;
+
+  /* Foto a sangre detras del hero. El scrim la oscurece arriba (donde flota la
+     nav) y la funde con la superficie abajo, para que el texto se lea y la
+     seccion siguiente no arranque con un corte duro.
+     Cual es la foto no se decide aqui: este modo solo declara que usa una. */
+  --hero-image: var(--hero-image-src);
+  /* Velo por zonas, no una capa negra pareja. Cada capa resuelve una necesidad
+     concreta de legibilidad, y las cuatro se detienen antes del cuadrante del
+     fuego (40-80% de ancho, 15-70% de alto): esa zona queda a foto limpia
+     porque es la que tiene que quemar. Profundidad, no imagen apagada.
+     Se oscurece con el propio color de superficie y no con negro puro, para no
+     aplastar los negros de la imagen. */
+  --hero-scrim:
+    /* nav: apenas una caida arriba, y corta antes de llegar a las llamas */
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface) 55%, transparent) 0%,
+      transparent 15%
+    ),
+    /* metadata: base para que los datos se lean sin caja. Deliberadamente bajo:
+       por encima de este valor el asfalto pierde el grano y el bajo de la foto
+       se convierte en una franja plana. */
+    linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--surface) 62%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 24%, transparent) 13%,
+      transparent 28%
+    ),
+    /* logotipo y reclamo: la banda mas oscura, porque es la unica zona con texto
+       largo encima. Se disuelve antes del fuego, que empieza hacia el 40%. */
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--surface) 72%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 24%, transparent) 30%,
+      transparent 42%
+    ),
+    /* utilidades de la nav: un apoyo minimo en el borde derecho. Mas que esto
+       apaga el frente del coche sin que ES/EN ni BOLSA se lean mejor. */
+    linear-gradient(
+      270deg,
+      color-mix(in srgb, var(--surface) 32%, transparent) 0%,
+      color-mix(in srgb, var(--surface) 12%, transparent) 9%,
+      transparent 19%
+    );
+
+  --logo-opacity: 1;
+}
+
+/* Puente hacia Tailwind: habilita `bg-surface`, `text-ink/60`, `border-ink/8`,
+   `text-fire-orange`, etc. Los modificadores de opacidad (`/60`) los resuelve
+   Tailwind v4 con color-mix, asi que las rampas de gris siguen funcionando
+   igual que cuando eran `text-black/60`. */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-nav: var(--surface-nav);
+  --color-surface-nav-open: var(--surface-nav-open);
+  --color-ink: var(--ink);
+  --color-ink-inverse: var(--ink-inverse);
+}
+
+/* Transicion al cambiar de modo. Se excluye a quien pidio menos movimiento. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-ui-mode] body {
+    transition: background-color 400ms ease, color 400ms ease;
+  }
+}
+
+
+/**
+ * Fondo a sangre del hero, en tres capas apiladas: foto, video encima, velo
+ * sobre los dos. El velo va en su propio elemento y no como primer plano del
+ * `background-image` de la foto porque entre medio tiene que caber el video, y
+ * el fondo de un elemento se pinta siempre por detras de sus hijos.
+ *
+ * En los modos sin fondo los dos tokens valen `none` y ninguna capa pinta nada,
+ * asi que la foto no necesita condicionarse en el JSX. El video si: ver
+ * `usesHeroMedia()` en `theme/ui-mode.ts`.
+ */
+.hero-backdrop {
+  background-image: var(--hero-image);
+  background-size: cover;
+  /* A `cover` en una pantalla angosta le sobra ancho, y sin punto focal recorta
+     por donde caiga. */
+  background-position: var(--hero-position);
+  background-repeat: no-repeat;
+}
+
+.hero-video {
+  width: 100%;
+  height: 100%;
+  /* Mismo encuadre que la foto de abajo: si el video se recortara por otro
+     punto, el momento en que arranca seria un salto lateral de la imagen. */
+  object-fit: cover;
+  object-position: var(--hero-position);
+}
+
+.hero-scrim {
+  background-image: var(--hero-scrim);
+  /* Los degradados no tienen dimensiones propias: `cover` los estira al
+     recuadro entero, que es justo lo que se quiere. */
+  background-size: cover;
+}
+
+/**
+ * Barra de navegacion. Fondo, desenfoque y linea inferior salen de tokens porque
+ * hay modos que la quieren solida y modos que la quieren invisible sobre la foto
+ * del hero. Con `transparent` + `none` no queda ninguna franja dibujada arriba.
+ */
+.nav-bar {
+  background-color: var(--surface-nav);
+  backdrop-filter: var(--nav-blur);
+  border-bottom: 1px solid var(--nav-border);
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────────
+   Un solo bloque de JSX para todos los modos: alineacion, escala tipografica y
+   forma del CTA salen de tokens. Incluso la presencia del logo y de la flecha,
+   con `display`, para no meter condicionales de modo en el componente. */
+
+.hero-content {
+  max-width: var(--hero-content-max);
+  margin-inline: var(--hero-content-mx);
+  text-align: var(--hero-align);
+}
+
+.hero-title {
+  font-size: var(--hero-title-size);
+  line-height: var(--hero-title-leading);
+  font-weight: var(--hero-title-weight);
+  letter-spacing: var(--hero-title-tracking);
+}
+
+.hero-subtitle {
+  max-width: var(--hero-sub-max);
+  margin-inline: var(--hero-sub-mx);
+}
+
+.hero-cta {
+  background: var(--cta-bg);
+  color: var(--cta-color);
+  padding: var(--cta-padding);
+  border-bottom: var(--cta-border);
+  margin-inline-start: var(--cta-indent);
+}
+
+.hero-cta-arrow {
+  display: var(--cta-arrow-display);
+}
+
+/**
+ * Puente hacia los tokens base de shadcn/ui.
+ *
+ * `theme.css` aplica `body { bg-background; text-foreground }`, y esos dos
+ * tokens viven en `:root` sin enterarse del modo. Resultado: todo texto que no
+ * llevara una clase `text-ink/*` explicita salia casi negro tambien en modo
+ * oscuro; el titular del hero era el caso mas visible.
+ *
+ * Una sola regla alcanza para los dos modos: `--ink` y `--surface` ya valen lo
+ * que corresponde en cada bloque.
+ */
+html[data-ui-mode] {
+  --foreground: var(--ink);
+  --background: var(--surface);
+}
+
+/* ── Reclamo ───────────────────────────────────────────────────────────────
+   Entre el logotipo y la metadata. Medida corta a proposito: obliga a que corte
+   en dos o tres lineas y se lea como una declaracion, no como un parrafo. */
+.hero-claim {
+  font-size: clamp(1.05rem, 2vw, 1.55rem);
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  max-width: 24ch;
+}
+
+/* ── Sala clara ────────────────────────────────────────────────────────────
+   Cambio de ritmo despues del hero. En vez de escribir colores nuevos en cada
+   componente, la seccion redefine los mismos tokens en su ambito: lo de dentro
+   sigue diciendo `bg-surface` y `text-ink` sin enterarse de en que sala esta, y
+   un modo nuevo solo tiene que redefinir estas cuatro lineas. */
+.section--museum {
+  --surface: #f4f1ec;
+  --surface-sunken: #e8e3db;
+  --surface-hover: #ede9e2;
+  --ink: #17130f;
+  --ink-inverse: #f4f1ec;
+
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+/* ── Aparicion ─────────────────────────────────────────────────────────────
+   Solo `opacity` y `transform`: las dos propiedades que el navegador puede
+   animar en el compositor, sin recalcular diseno ni repintar. Cualquier otra
+   cosa aqui costaria cuadros con doce piezas en pantalla. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition-property: opacity, transform;
+  transition-duration: var(--motion-slow);
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: opacity, transform;
+}
+
+.reveal[data-revealed='true'] {
+  opacity: 1;
+  transform: none;
+  /* Terminada la entrada se libera la pista de composicion: mantenerla abierta
+     en doce elementos gasta memoria de video sin ganar nada. */
+  will-change: auto;
+}
+
+/* Con movimiento reducido el contenido aparece sin desplazamiento ni espera: el
+   hook ya lo marca visible de entrada, esto anula la transicion por si acaso. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal[data-revealed='true'] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ── Marca en la barra ─────────────────────────────────────────────────────
+   Solo aparece fuera del home: alli el logotipo grande del hero ya dice quien
+   es, y repetirlo arriba carga la pagina sin agregar informacion.
+   La llama es una foto muy alargada (1:3.87), asi que a esta escala se dimensiona
+   por ALTO y el ancho sale de la proporcion; fijar el ancho la dejaria como un
+   hilo de dos pixeles. */
+.nav-mark-flame {
+  height: 1.15em;
+  width: auto;
+  flex: none;
+}
