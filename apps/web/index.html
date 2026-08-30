@@ -2,9 +2,50 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/logo-flame.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Feuoir — objetos cotidianos con arte de fuego" />
+    <meta name="description" content="FEUOIR — transformed objects. Series 001, Loja, Ecuador." />
+    <!-- Precarga del poster del hero. Se queda, pero SIN `fetchpriority="high"`,
+         y las dos mitades de esa decision estan medidas.
+
+         Que se precarga. El fondo puede ser un video, pero un video no puede ser
+         nunca el LCP: lo que se pinta primero es su poster, que ademas es la
+         imagen completa del hero en el telefono, con movimiento reducido y en el
+         instante previo al primer fotograma. Ese poster es lo que se precarga.
+
+         Este archivo es estatico y lo que se configure en el panel no se conoce
+         hasta que la API responde, asi que precargarlo es imposible desde aqui.
+         El poster empaquetado, en cambio, es el valor por defecto de
+         --hero-image-src en modes.css: es el que el navegador iba a pedir de
+         todas formas, con o sin esta linea. La precarga no agrega una descarga,
+         adelanta la que ya existia. Inyectar una segunda cuando llega la URL del
+         panel seria redundante: para entonces ya se escribio el token, que
+         dispara exactamente la misma peticion.
+
+         Se precarga el WebP y no el AVIF, aunque el CSS prefiera el AVIF donde
+         se soporte: `poster` de <video> es una sola URL sin negociacion de
+         formato, y el WebP es el archivo que ese atributo nombra. Precargar el
+         AVIF adelantaria la version que el video NO usa.
+
+         Por que sin prioridad alta. Medido sobre la build de produccion a
+         1,6 Mbps y 150 ms de latencia, mediana de cinco vueltas:
+
+             precarga con fetchpriority=high   LCP 2008 ms   foto a los 2016 ms
+             precarga sin fetchpriority        LCP 1856 ms   foto a los 1872 ms
+             sin precarga                      LCP 1140 ms   foto a los 2374 ms
+
+         El elemento LCP resulto ser el <h1>, no el fondo: Chrome no toma esta
+         capa como candidata. Declarar la foto como maxima prioridad la pone a
+         competir por el ancho de banda con el CSS y el JS que ese titular
+         necesita, y sale perdiendo en las dos columnas. Sin el atributo la foto
+         llega incluso antes.
+
+         Quitar la precarga del todo da el mejor LCP, pero retrasa la foto medio
+         segundo. En una portada que es la foto, ese medio segundo pesa mas que
+         setecientos milisegundos de una metrica sobre un titular que se lee
+         igual: el hero sin foto es superficie oscura con texto claro, no un
+         hueco. -->
+    <link rel="preload" as="image" href="/hero-poster.webp" />
     <title>Feuoir</title>
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
   </head>

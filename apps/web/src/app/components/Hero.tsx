@@ -1,157 +1,192 @@
-import { useNavigate } from 'react-router';
-import { ArrowRight } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useTransitionNavigate } from '../lib/navigation';
+import { useHeroBackground } from '../lib/useHeroBackground';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import { SeriesSection } from './SeriesSection';
+import { fire } from '../theme/color';
+import { pickVideoSources } from '../theme/hero-image';
+import { useUiMode } from '../theme/UiModeProvider';
+import { usesHeroMedia } from '../theme/ui-mode';
+import { HERO_MOTION_QUERY } from '../content/hero';
+import { CURRENT_SERIES, pad2, seriesCode } from '../content/series';
+import { ROUTES } from '../content/vocabulary';
+
+/** El nombre de la marca no se traduce, asi que no pasa por i18n. */
+const BRAND = 'feuoir';
+
+/** Una entrada de la metadata del hero: etiqueta pequena, valor pequeno. */
+function Meta({ children }: { children: ReactNode }) {
+  // Un punto mas de opacidad que antes: el velo inferior bajo para recuperar el
+  // asfalto, y con `/45` estos datos quedaban por debajo del umbral de lectura.
+  return <span className="block text-[10px] tracking-[0.26em] uppercase text-ink/55">{children}</span>;
+}
 
 export function Hero() {
-  const navigate = useNavigate();
+  const navigate = useTransitionNavigate();
   const { t } = useTranslation();
+  const { mode } = useUiMode();
+  // El fondo sale del panel. La foto la coloca el hook escribiendo tokens, y
+  // aqui solo se usa su descripcion. El video, en cambio, es un elemento: no hay
+  // token que lo haga aparecer, asi que su presencia si se decide en el JSX.
+  //
+  // Tres condiciones, y ninguna es opcional: que el modo lleve fondo, que la
+  // ventana sea lo bastante ancha para que la toma signifique algo, y que nadie
+  // haya pedido menos movimiento. Se comprueban ANTES de montarlo porque un
+  // `<video autoplay>` escondido con CSS se descarga igual.
+  const wantsMotion = useMediaQuery(HERO_MOTION_QUERY);
+  const playsVideo = wantsMotion && usesHeroMedia(mode);
+  const { image: heroImage, video: heroVideo } = useHeroBackground(playsVideo);
+  const videoSources = playsVideo && heroVideo ? pickVideoSources(heroVideo, window.innerWidth) : [];
 
-  const categories = [
-    {
-      key: 'gripTape',
-      title: t('hero.gripTape'),
-      desc: t('hero.gripTapeDesc'),
-      gradient: 'linear-gradient(90deg, #FF5A1F 0%, #C1121F 100%)',
-      border: 'border-b md:border-b-0 md:border-r border-black/5',
-    },
-    {
-      key: 'lighters',
-      title: t('hero.lighters'),
-      desc: t('hero.lightersDesc'),
-      gradient: 'linear-gradient(90deg, #C1121F 0%, #FFC300 100%)',
-      border: 'border-b md:border-b-0 md:border-r border-black/5',
-    },
-    {
-      key: 'apparel',
-      title: t('hero.apparel'),
-      desc: t('hero.apparelDesc'),
-      gradient: 'linear-gradient(90deg, #FFC300 0%, #FF5A1F 100%)',
-      border: '',
-    },
-  ];
-
-  const steps = [
-    { n: '01', title: t('hero.step1'), desc: t('hero.step1Desc') },
-    { n: '02', title: t('hero.step2'), desc: t('hero.step2Desc') },
-    { n: '03', title: t('hero.step3'), desc: t('hero.step3Desc') },
-  ];
+  // En el modo de marca el hero es el nombre, no una frase: es el gesto de la
+  // referencia, donde el titular ES la firma del sitio y el resto lo explica
+  // abajo. El modo sobrio conserva la frase original.
+  const isBrandHero = mode === 'cool';
 
   return (
     <>
       {/* Hero Section */}
-      <section className="min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)] flex items-center justify-center relative overflow-hidden bg-white">
-        <div className="relative z-10 text-center max-w-4xl w-full px-6 md:px-8">
-          <img
-            src="/logo-flame.png"
-            alt=""
+      <section className="min-h-dvh flex items-center relative overflow-hidden bg-surface">
+        {/* Fondo a sangre, en tres capas apiladas por orden de aparicion en el
+            DOM: foto, video encima, y el velo sobre los dos. El velo es una capa
+            aparte y no el primer plano del `background-image` de la foto porque
+            entre medio tiene que caber el video, y el fondo de un elemento se
+            pinta siempre por detras de sus hijos.
+            `dvh` y no `vh`: en movil `100vh` cuenta la barra de direcciones y el
+            hero termina cortado hasta que el usuario scrollea. */}
+        {/* Que haya foto o no lo decide el modo activo via --hero-image, y cual
+            es la foto lo decide el panel via --hero-image-src. Este componente
+            no hace ninguna de las dos cosas.
+            Con descripcion cargada la foto es contenido y se anuncia; sin ella
+            es decoracion detras del titular y se oculta, que es lo correcto para
+            un fondo que nadie describio. */}
+        <div
+          className="absolute inset-0 hero-backdrop"
+          role={heroImage.alt ? 'img' : undefined}
+          aria-label={heroImage.alt || undefined}
+          aria-hidden={heroImage.alt ? undefined : true}
+        />
+
+        {/* El video repite lo que ya dice la foto de abajo, asi que se oculta a
+            los lectores de pantalla: anunciarlo seria describir dos veces el
+            mismo fondo.
+            `muted` y `playsInline` no son preferencias: sin ellos ningun
+            navegador movil arranca la reproduccion sola. `poster` apunta al
+            mismo archivo que pinta la capa de la foto, de modo que el navegador
+            lo pide una sola vez y no hay salto entre el poster y el fondo. */}
+        {videoSources.length > 0 && (
+          <video
+            className="absolute inset-0 hero-video"
+            poster={heroImage.src}
+            autoPlay
+            muted
+            loop
+            playsInline
             aria-hidden="true"
-            className="mx-auto mb-3 md:mb-4 w-28 sm:w-36 md:w-44 pointer-events-none select-none"
-            style={{ mixBlendMode: 'multiply', opacity: 0.9 }}
-          />
-          <h1 className="text-[2rem] sm:text-[3rem] md:text-[4rem] leading-[0.95] mb-3 md:mb-6 tracking-tight whitespace-pre-line">
-            {t('hero.title')}
-          </h1>
-          <p className="text-sm md:text-lg tracking-wide mb-6 md:mb-10 text-black/60 max-w-2xl mx-auto">
-            {t('hero.subtitle')}
-          </p>
-          <button
-            onClick={() => navigate('/custom')}
-            className="w-full sm:w-auto px-10 sm:px-12 py-4 bg-black text-white tracking-widest uppercase transition-all hover:bg-black/80 active:bg-black/70 group relative overflow-hidden"
           >
-            <span className="relative z-10">{t('hero.cta')}</span>
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: 'linear-gradient(90deg, rgba(255,90,31,0.1), rgba(193,18,31,0.1))' }}
-            />
+            {videoSources.map((source) => (
+              <source key={source.src} src={source.src} type={source.type} />
+            ))}
+          </video>
+        )}
+
+        <div className="absolute inset-0 hero-scrim" aria-hidden="true" />
+        {/* Alineacion, escala del titular y forma del CTA vienen de tokens
+            (`.hero-*` en modes.css). La nav es fixed y flota encima: el padding
+            superior evita que el titular le quede debajo. */}
+        <div className="hero-content relative z-10 w-full px-6 md:px-10 pt-16 md:pt-20">
+          <h1 className="hero-title mb-6 md:mb-9 whitespace-pre-line">
+            {isBrandHero ? BRAND : t('hero.title')}
+          </h1>
+
+          {isBrandHero ? (
+            <>
+              {/* El reclamo enuncia la irrepetibilidad como un hecho. No lleva
+                  parrafo explicativo: la pagina no tiene que argumentar que es
+                  exclusiva, tiene que comportarse como si lo fuera. */}
+              <p className="hero-claim mb-3 md:mb-4">{t('brand.claim')}</p>
+              {/* Tracking mas corto y algo mas de contraste que el resto de la
+                  metadata: es una linea larga sobre foto, y con el tracking de
+                  las etiquetas sueltas se leia como un patron y no como texto.
+                  Sigue siendo metadata, no un segundo titular. */}
+              <p className="text-[10px] tracking-[0.14em] uppercase text-ink/65 mb-10 md:mb-14">
+                {t('brand.claimSecondary')}
+              </p>
+            </>
+          ) : (
+            <p className="hero-subtitle text-sm md:text-base tracking-wide leading-relaxed mb-8 md:mb-12 text-ink/65">
+              {t('hero.subtitle')}
+            </p>
+          )}
+
+          {/* Referencia editorial, no boton: sin caja, sin relleno, sin radio.
+              Una linea fina debajo basta para que se lea como accionable. */}
+          <button
+            onClick={() => navigate(ROUTES.objects)}
+            className="hero-cta inline-flex items-center gap-3 text-[11px] tracking-[0.25em] uppercase transition-opacity hover:opacity-60"
+          >
+            <span>
+              {isBrandHero ? t('series.title', { number: CURRENT_SERIES.number }) : t('hero.cta')}
+            </span>
+            <ArrowUpRight className="hero-cta-arrow" size={13} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
+
+        {/* Metadata del archivo. Pequena y secundaria: su trabajo es que la
+            pagina parezca un registro vivo, no anunciarse. */}
+        {isBrandHero && (
+          <div className="hero-meta absolute inset-x-0 bottom-0 z-10 px-6 md:px-10 pb-7 md:pb-9">
+            {/* En movil las dos columnas no entran enfrentadas y la derecha se
+                sale de pantalla: ahi se apilan, y los contadores pasan a una
+                sola fila. Desde `md` vuelven a enfrentarse. */}
+            <div className="max-w-[1600px] mx-auto flex flex-col gap-2.5 md:flex-row md:items-end md:justify-between md:gap-8">
+              {/* Solo el codigo: el nombre de la serie ya esta arriba, en el CTA,
+                  y la procedencia no se publica todavia. */}
+              <Meta>{seriesCode(CURRENT_SERIES.number, CURRENT_SERIES.year)}</Meta>
+              {/* Contadores derivados del listado de piezas, nunca escritos a
+                  mano: en produccion no se inventan piezas archivadas para que
+                  la serie parezca mas grande. Si hay 4 objetos y no se vendio
+                  ninguno, aqui tiene que decir `04 DISPONIBLE / 00 ARCHIVADO`.
+                  El margen extra los saca del borde donde termina la nav: con
+                  todo enfrentado al mismo eje el hero vuelve a leerse como un
+                  container centrado y no como una portada. */}
+              <div className="flex gap-6 md:block md:space-y-1 md:text-right md:me-8 tabular-nums">
+                <Meta>
+                  {pad2(CURRENT_SERIES.counts.available)} {t('state.available')}
+                </Meta>
+                <Meta>
+                  {pad2(CURRENT_SERIES.counts.archived)} {t('state.archived')}
+                </Meta>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* Featured Categories */}
-      <section className="py-16 md:py-32 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-0">
-            {categories.map(({ key, title, desc, gradient, border }) => (
-              <button
-                key={key}
-                onClick={() => navigate('/shop')}
-                className={`group text-left cursor-pointer ${border} px-8 py-10 md:p-16 hover:bg-[#fafafa] active:bg-[#fafafa] transition-colors duration-500`}
-              >
-                <div className="space-y-6 md:space-y-8">
-                  <div className="w-16 h-1" style={{ background: gradient }} />
-                  <h3 className="text-2xl md:text-3xl tracking-tight">{title}</h3>
-                  <p className="text-black/50 tracking-wide leading-relaxed text-sm md:text-base">{desc}</p>
-                  <div className="flex items-center gap-2 text-black/60 group-hover:text-black transition-colors">
-                    <span className="tracking-wide text-sm">{t('hero.explore')}</span>
-                    <ArrowRight size={14} strokeWidth={1.5} />
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
+      <SeriesSection />
 
       {/* Philosophy */}
-      <section className="py-20 md:py-40 px-6 md:px-12 bg-white relative overflow-hidden">
+      <section className="py-20 md:py-40 px-6 md:px-12 bg-surface relative overflow-hidden">
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[150px] opacity-20"
-          style={{ background: 'radial-gradient(circle, rgba(193,18,31,0.3) 0%, transparent 70%)' }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full"
+          style={{
+            filter: 'blur(var(--glow-blur))',
+            opacity: 'var(--glow-hero)',
+            background: `radial-gradient(circle, ${fire('red', 30)} 0%, transparent 70%)`,
+          }}
         />
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <p className="text-[1.6rem] sm:text-4xl md:text-5xl tracking-tight leading-[1.25] mb-8 md:mb-16 whitespace-pre-line">
             {t('hero.philosophy')}
           </p>
-          <div className="max-w-2xl mx-auto space-y-6 md:space-y-8 text-base md:text-lg tracking-wide text-black/60 leading-relaxed">
+          <div className="max-w-2xl mx-auto space-y-6 md:space-y-8 text-base md:text-lg tracking-wide text-ink/60 leading-relaxed">
             <p>{t('hero.philP1')}</p>
-            <p>{t('hero.philP2')}</p>
           </div>
         </div>
       </section>
 
-      {/* Process */}
-      <section className="py-16 md:py-32 px-6 md:px-12 bg-[#fafafa]">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-10 md:mb-24">
-            <h2 className="text-3xl sm:text-5xl md:text-6xl tracking-tight">{t('hero.processTitle')}</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-10 md:gap-16">
-            {steps.map(({ n, title, desc }) => (
-              <div key={n} className="space-y-4 md:space-y-6">
-                <div className="text-4xl md:text-6xl font-light text-black/20">{n}</div>
-                <h3 className="text-xl md:text-2xl tracking-tight">{title}</h3>
-                <p className="text-black/60 tracking-wide leading-relaxed text-sm md:text-base">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20 md:py-40 px-6 md:px-8 bg-white relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{ background: 'radial-gradient(circle at 30% 50%, rgba(255,90,31,0.15) 0%, transparent 50%), radial-gradient(circle at 70% 50%, rgba(255,195,0,0.1) 0%, transparent 50%)' }}
-        />
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-3xl sm:text-5xl md:text-6xl tracking-tight mb-5 md:mb-12">{t('hero.ctaTitle')}</h2>
-          <p className="text-base md:text-xl tracking-wide text-black/60 mb-8 md:mb-16 max-w-2xl mx-auto">{t('hero.ctaSubtitle')}</p>
-          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center">
-            <button
-              onClick={() => navigate('/shop')}
-              className="w-full sm:w-auto px-10 sm:px-12 py-4 bg-black text-white tracking-widest uppercase hover:bg-black/80 active:bg-black/70 transition-colors"
-            >
-              {t('hero.shopNow')}
-            </button>
-            <button
-              onClick={() => navigate('/custom')}
-              className="w-full sm:w-auto px-10 sm:px-12 py-4 border border-black tracking-widest uppercase hover:bg-black hover:text-white active:bg-black active:text-white transition-colors"
-            >
-              {t('hero.customizeCta')}
-            </button>
-          </div>
-        </div>
-      </section>
     </>
   );
 }
