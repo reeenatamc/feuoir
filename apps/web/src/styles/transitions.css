@@ -1,0 +1,62 @@
+/**
+ * Transiciones entre rutas, con la View Transitions API del navegador.
+ *
+ * El navegador toma una captura de la pagina saliente y otra de la entrante y
+ * anima entre las dos. Se activa desde `lib/navigation.tsx`; aqui solo se define
+ * como se ve, en el mismo lugar donde vive el resto del movimiento.
+ *
+ * La duracion sale de `--motion-slow`, que cada modo define a su gusto: el modo
+ * sobrio pasa mas rapido y el otro se toma su tiempo.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--motion-slow);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+    animation-fill-mode: both;
+  }
+
+  /* La saliente solo se apaga. Moverla tambien lee como dos cosas peleando. */
+  ::view-transition-old(root) {
+    animation-name: route-leave;
+  }
+
+  /* La entrante sube apenas mientras aparece: da direccion al cambio sin que
+     parezca un carrusel. */
+  ::view-transition-new(root) {
+    animation-name: route-enter;
+  }
+
+  @keyframes route-leave {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes route-enter {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+}
+
+/* Con movimiento reducido se cambia de pagina sin animar. Se apaga con
+   `animation: none` en vez de no capturar, para que el resultado final sea el
+   mismo en los dos casos. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/**
+ * La barra de navegacion es persistente: al darle nombre propio queda fuera de
+ * la captura de `root` y no parpadea con cada cambio de ruta. El contenido
+ * transiciona por debajo mientras ella se queda quieta.
+ */
+.nav-bar {
+  view-transition-name: feuoir-nav;
+}
