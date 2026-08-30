@@ -83,7 +83,8 @@ export function Navigation({ cartCount = 0 }: { cartCount?: number }) {
             <button
               onClick={() => setMenuOpen(!menuOpen)}
               className="w-11 h-11 flex items-center justify-center transition-opacity hover:opacity-60"
-              aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+              aria-expanded={menuOpen}
             >
               {menuOpen ? <X size={19} strokeWidth={1.5} /> : <Menu size={19} strokeWidth={1.5} />}
             </button>

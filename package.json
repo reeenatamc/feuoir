@@ -10,6 +10,16 @@
     "dev:web": "npm run dev --workspace web",
     "dev:api": "npm run start:dev --workspace api",
     "build:web": "npm run build --workspace web",
-    "build:api": "npm run build --workspace api"
+    "build:api": "npm run build --workspace api",
+    "build": "npm run build:web && npm run build:api",
+    "typecheck": "npm run typecheck --workspace web && npm run typecheck --workspace api"
+  },
+  "engines": {
+    "node": ">=20.18"
+  },
+  "//overrides": "MUI y Radix piden @types/react 19, pero la app corre en React 18. npm hoisteaba la 19 a la raiz y dejaba la 18 anidada en apps/web, y TS mezclaba ambas ('bigint is not assignable to ReactNode'). Los overrides solo funcionan en el package.json raiz. Si algun dia se migra a React 19, subir estos pines.",
+  "overrides": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1"
   }
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Shirt, Flame, Layers } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { categoryIcon } from '../lib/catalog';
 import type { Product } from '../types';
 
 export function ProductCard({ product, onSelect }: { product: Product; onSelect: (product: Product) => void }) {
   const [isHovered, setIsHovered] = useState(false);
   const { t } = useTranslation();
+  const Icon = categoryIcon(product.category);
 
   return (
     <div
@@ -25,9 +26,7 @@ export function ProductCard({ product, onSelect }: { product: Product; onSelect:
               }}
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              {product.category === 'hoodie'   && <Shirt  size={64} className="opacity-[0.15]" strokeWidth={1} />}
-              {product.category === 'lighter'  && <Flame  size={64} className="opacity-[0.15]" strokeWidth={1} />}
-              {product.category === 'griptape' && <Layers size={64} className="opacity-[0.15]" strokeWidth={1} />}
+              <Icon size={64} className="opacity-[0.15]" strokeWidth={1} />
             </div>
           </div>
         </div>

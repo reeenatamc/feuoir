@@ -1,24 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../lib/supabase';
+import { supabase, logSupabaseError } from '../lib/supabase';
 import { ProductCard } from './ProductCard';
 import type { Product } from '../types';
 
 export function ProductGrid({ onSelect }: { onSelect: (product: Product) => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [failed, setFailed]     = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
+    let active = true;
+
     supabase
       .from('products')
       .select('*')
       .eq('status', 'active')
       .order('id')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (!active) return;
+        setFailed(logSupabaseError('products.select', error));
         setProducts((data as Product[]) ?? []);
         setLoading(false);
       });
+
+    return () => { active = false; };
   }, []);
 
   return (
@@ -39,6 +46,14 @@ export function ProductGrid({ onSelect }: { onSelect: (product: Product) => void
               </div>
             ))}
           </div>
+        ) : failed ? (
+          <p className="py-16 text-center text-sm tracking-wide text-black/40">
+            {t('shop.loadError')}
+          </p>
+        ) : products.length === 0 ? (
+          <p className="py-16 text-center text-sm tracking-wide text-black/30">
+            {t('shop.empty')}
+          </p>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 md:gap-x-8 gap-y-10 md:gap-y-20">
             {products.map((product) => (

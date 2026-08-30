@@ -26,7 +26,7 @@ export class CreatePaymentAttemptUseCase {
     const attempt: PaymentAttempt = {
       id: randomUUID(),
       orderId: input.orderId,
-      provider: "whatsapp",
+      provider: this.provider.name,
       status: "pending",
       amount: input.amount,
       currency: input.currency,

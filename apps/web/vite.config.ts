@@ -1,17 +1,20 @@
-import { defineConfig } from 'vite'
-import path from 'path'
+import { defineConfig, type Plugin } from 'vite'
+import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-
-function figmaAssetResolver() {
+// Resuelve los imports `figma:asset/...` que genera Figma Make hacia src/assets.
+// Se mantiene por compatibilidad con pegados desde Figma; hoy no hay ningun
+// import de ese tipo en el codigo.
+function figmaAssetResolver(): Plugin {
   return {
     name: 'figma-asset-resolver',
-    resolveId(id) {
+    resolveId(id: string) {
       if (id.startsWith('figma:asset/')) {
         const filename = id.replace('figma:asset/', '')
         return path.resolve(__dirname, 'src/assets', filename)
       }
+      return null
     },
   }
 }

@@ -1,29 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Flame, Layers, Shirt, LogOut, Save } from 'lucide-react';
+import { LogOut, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { supabase, settingsToDb, settingsFromDb } from '../lib/supabase';
+import { supabase, settingsToDb, logSupabaseError } from '../lib/supabase';
+import {
+  categoryIcon,
+  categoryLabelKey,
+  PRODUCT_STATUS_STYLE,
+  NEXT_PRODUCT_STATUS,
+} from '../lib/catalog';
 import type { Product, CartItem, Settings } from '../types';
-
-const categoryLabels: Record<string, string> = {
-  griptape: 'Grip Tape',
-  lighter:  'Lighter',
-  hoodie:   'Hoodie',
-  custom:   'Custom',
-};
-
-const categoryIcons: Record<string, typeof Flame> = {
-  griptape: Layers,
-  lighter:  Flame,
-  hoodie:   Shirt,
-  custom:   Flame,
-};
-
-const statusStyle: Record<string, string> = {
-  active:   'bg-emerald-50 text-emerald-700',
-  draft:    'bg-black/5 text-black/50',
-  archived: 'bg-red-50 text-red-600',
-};
 
 const settingsFields = [
   { key: 'businessName', tKey: 'admin.config.businessName', type: 'text',   placeholder: 'Feuoir' },
@@ -52,6 +38,9 @@ export function AdminPanel({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Partial<Product>>({});
   const [saving, setSaving]       = useState(false);
+  // Se guarda la CLAVE i18n, no el texto ya traducido: asi el mensaje sigue el
+  // idioma activo y el efecto de carga no depende de `t`.
+  const [errorKey, setErrorKey]   = useState<'load' | 'save' | null>(null);
 
   // Local copy of settings for the config form
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
@@ -59,14 +48,20 @@ export function AdminPanel({
   const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     supabase
       .from('products')
       .select('*')
       .order('id')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (logSupabaseError('products.select', error)) setErrorKey('load');
         setProducts((data as Product[]) ?? []);
         setLoadingP(false);
       });
+
+    return () => { active = false; };
   }, []);
 
   // Sync settings prop → local form
@@ -80,26 +75,49 @@ export function AdminPanel({
     setEditValues({ name: p.name, price: p.price, description: p.description });
   };
 
-  const cancelEdit = () => { setEditingId(null); setEditValues({}); };
+  const cancelEdit = () => { setEditingId(null); setEditValues({}); setErrorKey(null); };
 
+  // Nota: el estado local solo se actualiza DESPUES de que la escritura confirme.
+  // Antes se actualizaba siempre, asi que la UI mostraba datos guardados que
+  // en realidad nunca llegaron a Supabase (p. ej. si RLS rechazaba el update).
   const saveEdit = async () => {
     if (editingId === null) return;
     setSaving(true);
-    await supabase.from('products').update(editValues).eq('id', editingId);
+    setErrorKey(null);
+
+    const { error: updateError } = await supabase
+      .from('products')
+      .update(editValues)
+      .eq('id', editingId);
+
+    setSaving(false);
+
+    if (logSupabaseError('products.update', updateError)) {
+      setErrorKey('save');
+      return;
+    }
+
     setProducts((prev) =>
       prev.map((p) => (p.id === editingId ? { ...p, ...editValues } : p))
     );
-    setSaving(false);
     setEditingId(null);
     setEditValues({});
   };
 
   const toggleStatus = async (product: Product) => {
-    const next: Record<string, Product['status']> = {
-      active: 'draft', draft: 'active', archived: 'active',
-    };
-    const newStatus = next[product.status];
-    await supabase.from('products').update({ status: newStatus }).eq('id', product.id);
+    const newStatus = NEXT_PRODUCT_STATUS[product.status];
+    setErrorKey(null);
+
+    const { error: updateError } = await supabase
+      .from('products')
+      .update({ status: newStatus })
+      .eq('id', product.id);
+
+    if (logSupabaseError('products.updateStatus', updateError)) {
+      setErrorKey('save');
+      return;
+    }
+
     setProducts((prev) =>
       prev.map((p) => (p.id === product.id ? { ...p, status: newStatus } : p))
     );
@@ -108,10 +126,22 @@ export function AdminPanel({
   /* ── Settings save ── */
   const saveSettings = async () => {
     setSavingSettings(true);
-    await supabase.from('settings').update(settingsToDb(localSettings)).eq('id', 1);
+    setErrorKey(null);
+
+    const { error: updateError } = await supabase
+      .from('settings')
+      .update(settingsToDb(localSettings))
+      .eq('id', 1);
+
+    setSavingSettings(false);
+
+    if (logSupabaseError('settings.update', updateError)) {
+      setErrorKey('save');
+      return;
+    }
+
     onUpdateSettings(localSettings);
     setSettingsDirty(false);
-    setSavingSettings(false);
   };
 
   const updateLocal = (updates: Partial<Settings>) => {
@@ -185,6 +215,16 @@ export function AdminPanel({
           ))}
         </div>
 
+        {/* Los errores de Supabase antes se descartaban en silencio */}
+        {errorKey && (
+          <div
+            role="alert"
+            className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-xs tracking-wide text-red-700"
+          >
+            {t(`admin.error.${errorKey}`)}
+          </div>
+        )}
+
         {/* ── Products ── */}
         {tab === 'products' && (
           <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0">
@@ -207,7 +247,7 @@ export function AdminPanel({
                 </thead>
                 <tbody>
                   {products.map((product) => {
-                    const Icon = categoryIcons[product.category] ?? Flame;
+                    const Icon = categoryIcon(product.category);
                     const isEditing = editingId === product.id;
                     return (
                       <tr key={product.id} className="border-b border-black/5 group">
@@ -230,7 +270,7 @@ export function AdminPanel({
                         </td>
                         <td className="py-4 pr-6">
                           <span className="text-xs text-black/40 tracking-wide">
-                            {categoryLabels[product.category] ?? product.category}
+                            {t(categoryLabelKey(product.category), product.category)}
                           </span>
                         </td>
                         <td className="py-4 pr-6">
@@ -251,9 +291,9 @@ export function AdminPanel({
                         <td className="py-4 pr-6">
                           <button
                             onClick={() => toggleStatus(product)}
-                            className={`px-2.5 py-1 text-[10px] tracking-widest uppercase rounded-sm transition-colors ${statusStyle[product.status]}`}
+                            className={`px-2.5 py-1 text-[10px] tracking-widest uppercase rounded-sm transition-colors ${PRODUCT_STATUS_STYLE[product.status]}`}
                           >
-                            {product.status}
+                            {t(`admin.status.${product.status}`, product.status)}
                           </button>
                         </td>
                         <td className="py-4 text-right">
@@ -302,7 +342,12 @@ export function AdminPanel({
               <table className="w-full min-w-[400px]">
                 <thead>
                   <tr className="border-b border-black/8">
-                    {['#', 'Producto', 'Precio', 'Estado'].map((h) => (
+                    {[
+                      t('admin.table.number'),
+                      t('admin.table.product'),
+                      t('admin.table.price'),
+                      t('admin.table.status'),
+                    ].map((h) => (
                       <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-black/30 font-normal text-left pr-6 last:pr-0">
                         {h}
                       </th>

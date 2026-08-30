@@ -1,10 +1,10 @@
-import { PaymentProvider } from "@feuoir/shared";
+import type { PaymentProvider, PaymentStatus } from "@feuoir/shared";
 
 export interface PaymentAttempt {
   id: string;
   orderId: string;
   provider: PaymentProvider;
-  status: "pending" | "authorized" | "paid" | "failed" | "refunded";
+  status: PaymentStatus;
   amount: number;
   currency: string;
   externalReference: string;

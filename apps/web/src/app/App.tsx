@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import type { Session } from '@supabase/supabase-js';
-import { supabase, settingsFromDb } from './lib/supabase';
+import { supabase, settingsFromDb, logSupabaseError } from './lib/supabase';
 import { Navigation } from './components/Navigation';
 import { Hero } from './components/Hero';
 import { ProductGrid } from './components/ProductGrid';
@@ -30,23 +30,35 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
+    // Evita setState despues de que el componente se desmonte
+    let active = true;
+
     // Restore existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (!active) return;
+      logSupabaseError('auth.getSession', error);
       setSession(session);
       setAuthLoading(false);
     });
 
     // Keep session in sync
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (!active) return;
       setSession(session);
     });
 
-    // Fetch public settings (needed for WhatsApp checkout)
-    supabase.from('settings').select('*').single().then(({ data }) => {
+    // Fetch public settings (needed for WhatsApp checkout).
+    // `maybeSingle` en vez de `single`: con 0 filas devuelve null en vez de tirar error.
+    supabase.from('settings').select('*').maybeSingle().then(({ data, error }) => {
+      if (!active) return;
+      if (logSupabaseError('settings.select', error)) return;
       if (data) setSettings(settingsFromDb(data as Record<string, unknown>));
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleUpdateSettings = (updates: Partial<Settings>) => {
@@ -79,6 +91,10 @@ export default function App() {
             path="/admin"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading}>
+                {/* TODO: `orders` recibe el carrito LOCAL de este navegador, no las
+                    ordenes reales del negocio. La pestaña "Órdenes" del admin muestra
+                    entonces el carrito del propio admin. Requiere una tabla `orders`
+                    en Supabase (o el endpoint POST /api/orders que ya existe). */}
                 <AdminPanel
                   orders={cart}
                   settings={settings}

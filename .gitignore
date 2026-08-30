@@ -1,5 +1,18 @@
 node_modules
 dist
+build
+
+# Env: solo se versiona `.env.example`
 .env
+.env.*
+!.env.example
+
+# Artefactos de build / tooling
+*.tsbuildinfo
+.vite
+coverage
+.turbo
+
 .DS_Store
+Thumbs.db
 *.log

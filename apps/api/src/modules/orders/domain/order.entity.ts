@@ -1,5 +1,11 @@
+import type { PaymentStatus } from "@feuoir/shared";
+
 export type OrderStatus = "pending_whatsapp" | "confirmed" | "cancelled";
-export type PaymentStatus = "pending" | "authorized" | "paid" | "failed" | "refunded";
+
+// `PaymentStatus` vive en @feuoir/shared. Estaba redefinido aca y tambien en
+// payments/domain/payment.entity.ts: tres copias del mismo union que podian
+// divergir sin que el compilador avisara.
+export type { PaymentStatus };
 
 export interface Order {
   id: string;

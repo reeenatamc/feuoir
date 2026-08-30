@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -15,7 +16,7 @@ export function AdminLogin({ isAuthenticated }: { isAuthenticated: boolean }) {
 
   if (isAuthenticated) return <Navigate to="/admin" replace />;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);

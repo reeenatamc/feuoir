@@ -1,10 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Settings } from '../types';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+/**
+ * Falla en el arranque si falta configuracion, en vez de dejar que
+ * `createClient(undefined, undefined)` reviente mas tarde con un error opaco.
+ */
+function requireEnv(name: 'VITE_SUPABASE_URL' | 'VITE_SUPABASE_ANON_KEY'): string {
+  const value = import.meta.env[name];
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(
+      `Falta la variable de entorno ${name}. Copiá apps/web/.env.example a apps/web/.env y completala.`
+    );
+  }
+  return value;
+}
 
-export const supabase = createClient(url, key);
+export const supabase = createClient(
+  requireEnv('VITE_SUPABASE_URL'),
+  requireEnv('VITE_SUPABASE_ANON_KEY')
+);
+
+/** Loguea el error de Supabase con contexto y devuelve `true` si hubo error. */
+export function logSupabaseError(context: string, error: unknown): boolean {
+  if (!error) return false;
+  console.error(`[supabase] ${context}:`, error);
+  return true;
+}
 
 // Settings DB ↔ TypeScript mappers
 export function settingsFromDb(row: Record<string, unknown>): Settings {

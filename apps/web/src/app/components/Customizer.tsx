@@ -1,13 +1,7 @@
-import { Shirt, Flame, Layers, X, ArrowRight } from 'lucide-react';
+import { X, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { categoryIcon, categoryLabelKey } from '../lib/catalog';
 import type { Product } from '../types';
-
-const categoryIcons: Record<string, typeof Flame> = {
-  hoodie:   Shirt,
-  lighter:  Flame,
-  griptape: Layers,
-  custom:   Flame,
-};
 
 export function Customizer({
   product,
@@ -22,7 +16,7 @@ export function Customizer({
 
   if (!product) return null;
 
-  const Icon = categoryIcons[product.category] ?? Flame;
+  const Icon = categoryIcon(product.category);
 
   const handleAdd = () => {
     onAddToCart(product);
@@ -42,7 +36,7 @@ export function Customizer({
 
         <div className="sticky top-0 bg-white border-b border-black/8 px-6 py-4 md:px-10 md:py-6 flex items-center justify-between z-10">
           <p className="text-[10px] tracking-[0.35em] uppercase text-black/35">
-            {t(`product.category.${product.category}`, product.category)}
+            {t(categoryLabelKey(product.category), product.category)}
           </p>
           <button
             onClick={onClose}

@@ -11,6 +11,8 @@ const es = {
     admin: 'Admin',
     viewSite: 'Ver sitio',
     logout: 'Salir',
+    openMenu: 'Abrir menú',
+    closeMenu: 'Cerrar menú',
   },
   hero: {
     title: 'Crea\nTu Fuego',
@@ -41,6 +43,8 @@ const es = {
   shop: {
     title: 'Shop',
     subtitle: 'Curado para la expresión creativa',
+    empty: 'Todavía no hay productos disponibles',
+    loadError: 'No pudimos cargar los productos. Intentá de nuevo en un momento.',
   },
   product: {
     view: 'Ver',
@@ -127,6 +131,10 @@ const es = {
       draft: 'borrador',
       archived: 'archivado',
     },
+    error: {
+      load: 'No pudimos cargar los datos.',
+      save: 'No se pudo guardar. Revisá tu conexión y los permisos del panel.',
+    },
   },
 };
 
@@ -140,6 +148,8 @@ const en = {
     admin: 'Admin',
     viewSite: 'View site',
     logout: 'Sign out',
+    openMenu: 'Open menu',
+    closeMenu: 'Close menu',
   },
   hero: {
     title: 'Create\nYour Fire',
@@ -170,6 +180,8 @@ const en = {
   shop: {
     title: 'Shop',
     subtitle: 'Curated for creative expression',
+    empty: 'No products available yet',
+    loadError: "We couldn't load the products. Please try again in a moment.",
   },
   product: {
     view: 'View',
@@ -256,8 +268,30 @@ const en = {
       draft: 'draft',
       archived: 'archived',
     },
+    error: {
+      load: "We couldn't load the data.",
+      save: 'Could not save. Check your connection and the panel permissions.',
+    },
   },
 };
+
+const LANG_KEY = 'feuoir_lang';
+const SUPPORTED_LANGS = ['es', 'en'] as const;
+const DEFAULT_LANG = 'es';
+
+// localStorage puede tirar (Safari en modo privado, cookies bloqueadas) y no
+// existe fuera del navegador. Antes se accedia directo a nivel de modulo,
+// asi que un throw acá tumbaba el arranque de toda la app.
+function readStoredLang(): string {
+  try {
+    const stored = globalThis.localStorage?.getItem(LANG_KEY);
+    return SUPPORTED_LANGS.includes(stored as (typeof SUPPORTED_LANGS)[number])
+      ? (stored as string)
+      : DEFAULT_LANG;
+  } catch {
+    return DEFAULT_LANG;
+  }
+}
 
 i18n
   .use(initReactI18next)
@@ -266,13 +300,18 @@ i18n
       es: { translation: es },
       en: { translation: en },
     },
-    lng: localStorage.getItem('feuoir_lang') ?? 'es',
-    fallbackLng: 'es',
+    lng: readStoredLang(),
+    supportedLngs: [...SUPPORTED_LANGS],
+    fallbackLng: DEFAULT_LANG,
     interpolation: { escapeValue: false },
   });
 
 i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('feuoir_lang', lng);
+  try {
+    globalThis.localStorage?.setItem(LANG_KEY, lng);
+  } catch {
+    // Persistir el idioma es best-effort; no vale romper la app por esto.
+  }
 });
 
 export default i18n;
