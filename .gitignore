@@ -16,3 +16,8 @@ coverage
 .DS_Store
 Thumbs.db
 *.log
+
+# Playwright: reportes y trazas de cada ejecucion
+test-results
+playwright-report
+.playwright
