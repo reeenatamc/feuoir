@@ -1,0 +1,43 @@
+/**
+ * Tipografia global.
+ *
+ * Inter viene self-hosted via `@fontsource-variable/inter` y no desde Google
+ * Fonts: se sirve desde el propio dominio (sin request a un tercero ni dato del
+ * visitante saliendo del sitio), funciona sin internet en desarrollo y queda
+ * fijada en el lockfile en vez de depender de lo que sirva un CDN ese dia.
+ *
+ * Es la variante de eje `wght` (100..900 en un solo archivo), asi que pedir
+ * varios pesos no cuesta descargas extra. El paquete declara `unicode-range` por
+ * subset, de modo que el navegador solo baja el latino salvo que la pagina
+ * necesite cirilico o griego.
+ */
+@import '@fontsource-variable/inter';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+/* Los controles de formulario no heredan la familia: el navegador les impone la
+   suya. Sin esto, botones e inputs quedaban fuera de Inter. */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
+body {
+  font-family: var(--font-sans);
+  /* Inter trae estas dos apagadas por defecto: `cv11` da la a de un solo piso y
+     `ss01` las mayusculas mas cerradas, que es el ajuste que la acerca al
+     grotesco de la referencia. */
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

@@ -1,2 +1,8 @@
 @import './tailwind.css';
+/* Antes de theme.css: define --font-sans, que la capa base usa para el documento. */
+@import './typography.css';
 @import './theme.css';
+/* Despues de theme.css: modes.css redefine los tokens de marca (--fire-*) por modo. */
+@import './modes.css';
+/* Al final: usa --motion-slow y .nav-bar, que definen los archivos anteriores. */
+@import './transitions.css';
