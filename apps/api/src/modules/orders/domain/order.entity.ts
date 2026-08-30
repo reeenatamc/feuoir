@@ -2,7 +2,7 @@ import type { PaymentStatus } from "@feuoir/shared";
 
 export type OrderStatus = "pending_whatsapp" | "confirmed" | "cancelled";
 
-// `PaymentStatus` vive en @feuoir/shared. Estaba redefinido aca y tambien en
+// `PaymentStatus` vive en @feuoir/shared. Estaba redefinido aqui y tambien en
 // payments/domain/payment.entity.ts: tres copias del mismo union que podian
 // divergir sin que el compilador avisara.
 export type { PaymentStatus };
