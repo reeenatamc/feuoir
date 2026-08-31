@@ -40,6 +40,74 @@ describe('heroImageFromSettings', () => {
   });
 });
 
+describe('heroImageFromSettings frente a un ajuste hostil', () => {
+  // Estos tests existen por un hallazgo concreto: `src` se comprobaba solo con
+  // `typeof === 'string'` y terminaba interpolado dentro de `url("...")` en una
+  // declaracion CSS. Un `")` cierra la funcion y lo que sigue son reglas nuevas
+  // sobre `<html>`. `focal_point` era peor: no se le miraba ni el tipo.
+
+  it('descarta un src que cierra el url() del CSS', () => {
+    const image = heroImageFromSettings({
+      hero_image: { src: 'https://cdn/a.webp") ;background:url("https://evil/x.png' },
+    });
+
+    expect(image).toBeNull();
+  });
+
+  it('descarta esquemas que no sean http ni https', () => {
+    expect(heroImageFromSettings({ hero_image: { src: 'javascript:alert(1)' } })).toBeNull();
+    expect(heroImageFromSettings({ hero_image: { src: 'data:image/svg+xml,<svg/>' } })).toBeNull();
+    expect(heroImageFromSettings({ hero_image: { src: 'no-es-una-url' } })).toBeNull();
+  });
+
+  it('descarta //host, que parece una ruta y es una URL absoluta', () => {
+    expect(heroImageFromSettings({ hero_image: { src: '//evil.example/x.webp' } })).toBeNull();
+  });
+
+  it('acepta una ruta del propio sitio', () => {
+    // Es la forma en que llega la foto cuando el frontend y la API comparten
+    // origen, que es como se despliega en produccion.
+    expect(heroImageFromSettings({ hero_image: { src: '/media/hero/960.webp' } })?.src).toBe(
+      '/media/hero/960.webp'
+    );
+  });
+
+  it('acepta http, que es lo que devuelve la API en desarrollo', () => {
+    // Bloquearlo dejaria la portada con el respaldo empaquetado en la maquina
+    // de quien la desarrolla, y eso es romper el uso normal.
+    expect(heroImageFromSettings({ hero_image: { src: 'http://127.0.0.1:8000/media/x.webp' } })?.src).toBe(
+      'http://127.0.0.1:8000/media/x.webp'
+    );
+  });
+
+  it('convierte el punto focal a numero', () => {
+    const image = heroImageFromSettings({
+      hero_image: { src: '/x.webp', focal_point: { x: '62', y: '38' } as never },
+    });
+
+    expect(image?.focalPoint).toEqual({ x: 62, y: 38 });
+  });
+
+  it('cae al respaldo cuando el punto focal no es un porcentaje', () => {
+    const injection = { x: '0%; background: url(https://evil/x.png)', y: 50 } as never;
+
+    const image = heroImageFromSettings({ hero_image: { src: '/x.webp', focal_point: injection } });
+
+    expect(image?.focalPoint).toEqual(BUNDLED_HERO_IMAGE.focalPoint);
+  });
+
+  it('cae al respaldo con un punto focal fuera de rango o ausente', () => {
+    const fueraDeRango = { x: 400, y: -1 } as never;
+
+    expect(heroImageFromSettings({ hero_image: { src: '/x.webp', focal_point: fueraDeRango } })?.focalPoint).toEqual(
+      BUNDLED_HERO_IMAGE.focalPoint
+    );
+    expect(heroImageFromSettings({ hero_image: { src: '/x.webp', focal_point: {} as never } })?.focalPoint).toEqual(
+      BUNDLED_HERO_IMAGE.focalPoint
+    );
+  });
+});
+
 describe('heroVideoFromSettings', () => {
   const video = { type: 'video/mp4; codecs="avc1.640032"', src: 'https://cdn/hero.mp4', width: 1920 };
 

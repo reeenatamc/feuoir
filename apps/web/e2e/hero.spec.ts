@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
+import { servirCatalogo } from './catalog';
 
 /**
  * Fotografia a sangre de la portada.
@@ -11,6 +12,12 @@ import type { Page, Route } from '@playwright/test';
  */
 
 const SETTINGS = '**/api/settings/';
+
+// La home tambien pinta la serie vigente debajo del hero. Se sirve fija para que
+// estos recorridos dependan solo de los ajustes, que es lo que comprueban.
+test.beforeEach(async ({ page }) => {
+  await servirCatalogo(page);
+});
 
 /** Una foto configurada desde el panel. Apunta a un archivo que existe. */
 function heroSettings(overrides: Record<string, unknown> = {}) {
@@ -33,12 +40,24 @@ function heroSettings(overrides: Record<string, unknown> = {}) {
   };
 }
 
-/** El mismo ajuste, pero con un video encima de la foto. */
+/**
+ * El mismo ajuste, pero con un video encima de la foto.
+ *
+ * Dos escalones y dos codecs, como los publica el backend: es lo que permite
+ * comprobar que a una ventana angosta le toca el archivo chico y que dentro del
+ * escalon manda el orden -- AV1 primero, porque el navegador se queda con la
+ * primera fuente que sabe reproducir.
+ */
 function videoSettings() {
   return {
     ...heroSettings(),
     hero_video: {
-      sources: [{ type: 'video/mp4; codecs="avc1.640032"', src: '/hero.mp4', width: 1920 }],
+      sources: [
+        { type: 'video/mp4; codecs="av01.0.05M.08"', src: '/hero-sm.av1.mp4', width: 1280 },
+        { type: 'video/mp4; codecs="avc1.64001f"', src: '/hero-sm.mp4', width: 1280 },
+        { type: 'video/mp4; codecs="av01.0.08M.08"', src: '/hero.av1.mp4', width: 1920 },
+        { type: 'video/mp4; codecs="avc1.640032"', src: '/hero.mp4', width: 1920 },
+      ],
     },
   };
 }
@@ -136,13 +155,12 @@ test.describe('foto del hero', () => {
 /**
  * Video de fondo.
  *
- * Se prueba en `chromium` y no en el proyecto movil porque la decision que hay
- * que verificar es justamente que en una pantalla angosta NO haya video, y eso
- * tiene su propio recorrido mas abajo.
+ * Se prueba en los dos proyectos: desde que la portada muestra la foto como
+ * banda en movil, el video ya no depende del ancho. La unica condicion que queda
+ * es la preferencia de movimiento, y tiene su propio recorrido.
  */
 test.describe('video del hero', () => {
-  test('se reproduce en escritorio, encima de la foto', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium', 'el video no se monta en movil');
+  test('se reproduce encima de la foto', async ({ page }) => {
     await serveSettings(page, videoSettings());
 
     await page.goto('/');
@@ -160,8 +178,8 @@ test.describe('video del hero', () => {
   });
 
   test('no se monta con movimiento reducido', async ({ page }) => {
-    // Un bucle a pantalla completa que nadie pidio es exactamente lo que esta
-    // preferencia existe para evitar. Queda la foto fija.
+    // Un bucle que nadie pidio es exactamente lo que esta preferencia existe
+    // para evitar. Queda la foto fija.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await serveSettings(page, videoSettings());
 
@@ -171,25 +189,90 @@ test.describe('video del hero', () => {
     await expect(page.locator('video')).toHaveCount(0);
   });
 
-  test('no se monta en una pantalla de telefono', async ({ page }) => {
-    // La toma es de 1,94:1 y el hero recorta con `cover`: en vertical se ve
-    // menos de un cuarto del cuadro, y el movimiento deja de significar algo.
+  test('a un telefono le toca el escalon chico, y en AV1', async ({ page }) => {
+    // `<video>` no tiene `srcset`: se queda con la primera fuente que sabe
+    // reproducir, sin mirar el tamano. El orden ES la decision, y aqui se
+    // comprueban sus dos mitades -- el escalon por ancho de ventana y el codec.
     await page.setViewportSize({ width: 390, height: 844 });
     await serveSettings(page, videoSettings());
 
     await page.goto('/');
 
-    await expect(backdrop(page)).toHaveCSS('background-image', /flame\.png/);
-    await expect(page.locator('video')).toHaveCount(0);
+    const fuentes = page.locator('video.hero-video source');
+    await expect(fuentes).toHaveCount(2);
+    await expect(fuentes.first()).toHaveAttribute('src', '/hero-sm.av1.mp4');
+    await expect(fuentes.nth(1)).toHaveAttribute('src', '/hero-sm.mp4');
   });
 
-  test('el modo sobrio no baja el video', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'chromium', 'el video no se monta en movil');
+  test('en un telefono se reproduce de verdad, no solo se monta', async ({ page }) => {
+    // Montar el elemento no prueba nada: si el navegador no arrancara solo, la
+    // portada se quedaria en el poster y nadie se enteraria hasta produccion.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await serveSettings(page, videoSettings());
+
+    await page.goto('/');
+
+    const video = page.locator('video.hero-video');
+    await expect(video).toHaveJSProperty('paused', false);
+    await expect
+      .poll(() => video.evaluate((el: HTMLVideoElement) => el.currentTime))
+      .toBeGreaterThan(0);
+  });
+
+  test('el modo sobrio no baja el video', async ({ page }) => {
     await serveSettings(page, videoSettings());
     await page.addInitScript(() => window.localStorage.setItem('feuoir_ui_mode', 'bored'));
 
     await page.goto('/');
 
     await expect(page.locator('video')).toHaveCount(0);
+  });
+});
+
+/**
+ * La portada en movil.
+ *
+ * La foto deja de ir a sangre y pasa a ser una banda con el bloque editorial
+ * montado sobre su borde. Lo que se comprueba no es el diseño sino sus dos
+ * consecuencias: que el logotipo cruce ese borde -- es lo que hace que la foto y
+ * la superficie se lean como una sola composicion -- y que el escritorio siga
+ * con la portada a pantalla completa.
+ */
+test.describe('banda del hero', () => {
+  test('en movil el logotipo cruza el borde de la foto', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await serveSettings(page, heroSettings());
+
+    await page.goto('/');
+
+    const banda = (await page.locator('.hero-band').boundingBox())!;
+    const titular = (await page.getByRole('heading', { level: 1 }).boundingBox())!;
+    const borde = banda.y + banda.height;
+
+    // Una franja, no la ventana entera: con 1,16:1 sobre 390 puntos de ancho son
+    // 336 de alto, que es la proporcion con la que la mujer y el fuego entran los
+    // dos en el recorte.
+    expect(banda.height).toBeGreaterThan(300);
+    expect(banda.height).toBeLessThan(400);
+    // Y el logotipo monta a caballo sobre ese borde: empieza dentro de la foto y
+    // termina fuera. Entero de un lado o del otro, la portada vuelve a leerse
+    // como foto arriba y bloque negro debajo, que es lo que se quiso quitar.
+    expect(titular.y).toBeLessThan(borde);
+    expect(titular.y + titular.height).toBeGreaterThan(borde);
+  });
+
+  test('en escritorio la portada sigue ocupando la ventana', async ({ page }) => {
+    await page.setViewportSize({ width: 1500, height: 900 });
+    await serveSettings(page, heroSettings());
+
+    await page.goto('/');
+
+    const banda = (await page.locator('.hero-band').boundingBox())!;
+    const titular = (await page.getByRole('heading', { level: 1 }).boundingBox())!;
+
+    // La foto va a sangre y el titular flota encima, dentro de ella.
+    expect(banda.height).toBeGreaterThanOrEqual(900);
+    expect(titular.y).toBeGreaterThan(banda.y);
+    expect(titular.y).toBeLessThan(banda.y + banda.height);
   });
 });

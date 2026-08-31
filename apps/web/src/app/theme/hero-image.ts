@@ -55,9 +55,24 @@ export function pickSrcsetUrl(srcset: string, targetWidth: number): string | nul
   return (covering ?? entries[entries.length - 1]).url;
 }
 
+/**
+ * Escapa una cadena para que quepa entre comillas dobles en CSS.
+ *
+ * Es la ultima linea antes de `setProperty`. La foto ya viene filtrada por
+ * `heroImageFromSettings`, pero por aca pasan tambien las URLs de cada `srcset`
+ * y el `type` de cada fuente, que llegan del mismo JSON y no los revisa nadie
+ * mas. Una comilla sin escapar cierra el `url("...")` y todo lo que siga se lee
+ * como declaraciones nuevas sobre `<html>`.
+ */
+function cssString(value: string): string {
+  // Los saltos de linea no se escapan sino que se quitan: una cadena CSS no
+  // puede contener uno literal, y ninguna URL o tipo MIME real lo lleva.
+  return value.replace(/[\\"]/g, '\\$&').replace(/[\n\r\f]/g, '');
+}
+
 function layer(url: string, type?: string): string {
-  const source = `url("${url}")`;
-  return type ? `${source} type("${type}")` : source;
+  const source = `url("${cssString(url)}")`;
+  return type ? `${source} type("${cssString(type)}")` : source;
 }
 
 /**

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { TransitionLink } from '../lib/navigation';
+import { useBag } from '../lib/CartProvider';
+import { useMuseumUnderBar } from '../lib/useMuseumUnderBar';
 import { ROUTES } from '../content/vocabulary';
 import { pad2 } from '../content/series';
 
@@ -20,13 +22,30 @@ const NAV_LINKS = [
  */
 const NAV_TYPE = 'text-[10px] tracking-[0.26em] uppercase';
 
-export function Navigation({ cartCount = 0 }: { cartCount?: number }) {
+export function Navigation() {
   const [indexOpen, setIndexOpen] = useState(false);
   const { t, i18n } = useTranslation();
+
+  // El contador sale del carrito del servidor y no de un estado local: es la
+  // misma bolsa que edita `/bag`, y con dos copias la barra diria una cosa y la
+  // pagina otra en cuanto una de las dos se recargara.
+  const { count } = useBag();
+
+  // La barra flota fuera de toda seccion y no hereda los tokens que cada sala
+  // redefine en su ambito. El unico dato que necesita del exterior es sobre cual
+  // esta flotando; que hacer con ese dato lo decide `modes.css`, que es donde
+  // vive la paleta. Aqui no se escribe ningun color.
+  const bar = useRef<HTMLElement>(null);
+  const overMuseum = useMuseumUnderBar(bar);
 
   // En el home el logotipo grande del hero ya dice quien es: repetirlo en la
   // barra no agrega informacion y le quita aire al encabezado. Fuera del home no
   // hay nada mas que lo diga, y ahi la marca vuelve, en pequeno.
+  //
+  // La excepcion es el home en movil. Alli el logotipo grande no comparte
+  // pantalla con la barra -- cae a media altura, cruzando el borde del video --
+  // y arriba solo quedan INDICE y BOLSA contra el margen derecho: media cabecera.
+  // Con la marca en pequeno a la izquierda la barra vuelve a tener dos extremos.
   const isHome = useLocation().pathname === '/';
 
   const toggleLang = () => {
@@ -54,23 +73,31 @@ export function Navigation({ cartCount = 0 }: { cartCount?: number }) {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 nav-bar">
+      <nav
+        ref={bar}
+        data-surface={overMuseum ? 'museum' : undefined}
+        className="fixed top-0 left-0 right-0 z-50 nav-bar"
+      >
         <div className="max-w-[1600px] mx-auto px-6 md:px-10">
           <div className="relative flex items-center justify-between h-16 md:h-20">
 
             {/* El hueco se mantiene aunque no haya marca: sin el, el resto de la
-                barra se recoloca al cambiar de ruta y la nav "salta". */}
+                barra se recoloca al cambiar de ruta y la nav "salta".
+                En el home se esconde desde `md` con CSS y no dejando de
+                renderizarla: el ancho de la ventana no se conoce hasta que corre
+                el JavaScript, y decidirlo ahi haria aparecer y desaparecer la
+                marca en el primer pintado. */}
             <div className="flex items-center">
-              {!isHome && (
-                <TransitionLink
-                  to="/"
-                  className="flex items-center gap-2 text-sm lowercase transition-opacity hover:opacity-60"
-                  aria-label={t('brand.home')}
-                >
-                  <img src="/flame.png" alt="" aria-hidden="true" className="nav-mark-flame" />
-                  <span aria-hidden="true">feuoir</span>
-                </TransitionLink>
-              )}
+              <TransitionLink
+                to="/"
+                className={`flex items-center gap-2 text-sm lowercase transition-opacity hover:opacity-60${
+                  isHome ? ' md:hidden' : ''
+                }`}
+                aria-label={t('brand.home')}
+              >
+                <img src="/flame.png" alt="" aria-hidden="true" className="nav-mark-flame" />
+                <span aria-hidden="true">feuoir</span>
+              </TransitionLink>
             </div>
 
             {/* Centrados desde `lg`. Por debajo vuelven al flujo: el
@@ -114,7 +141,7 @@ export function Navigation({ cartCount = 0 }: { cartCount?: number }) {
                 to={ROUTES.bag}
                 className={`${NAV_TYPE} tabular-nums transition-opacity hover:opacity-60`}
               >
-                {t('feuoirNav.bag')} {pad2(cartCount)}
+                {t('feuoirNav.bag')} {pad2(count)}
               </TransitionLink>
             </div>
           </div>

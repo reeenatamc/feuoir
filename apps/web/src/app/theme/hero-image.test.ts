@@ -80,7 +80,64 @@ describe('heroImageTokens', () => {
     const tokens = heroImageTokens(BUNDLED_HERO_IMAGE, opciones);
 
     expect(tokens[HERO_IMAGE_TOKEN]).toContain('/hero-poster.avif');
-    expect(tokens[HERO_POSITION_TOKEN]).toBe('50% 50%');
+    // A la izquierda del centro: es el ancla que deja a la mujer dentro del
+    // recorte movil. El motivo esta junto al valor, en `content/hero.ts`.
+    expect(tokens[HERO_POSITION_TOKEN]).toBe('40% 50%');
+  });
+});
+
+describe('escapado del valor CSS', () => {
+  // `heroImageFromSettings` filtra el `src`, pero las URLs de cada `srcset` y
+  // el `type` de cada fuente llegan del mismo JSON y no pasan por ese filtro:
+  // el escapado de aca es lo unico entre ellos y una declaracion CSS abierta.
+  const sinEscapar = (value: string) => value.match(/(?<!\\)"/g) ?? [];
+
+  it('una comilla en la URL no cierra el url()', () => {
+    const hostil: HeroImage = {
+      ...configured,
+      src: 'https://cdn/a.webp") ;background:url("https://evil/x.png',
+    };
+
+    const value = heroImageTokens(hostil, { ...opciones, asPoster: true })[HERO_IMAGE_TOKEN];
+
+    // Dos comillas sin escapar: las que abren y cierran la unica cadena. Si el
+    // valor inyectado hubiera cerrado la suya, habria cuatro o mas.
+    expect(sinEscapar(value)).toHaveLength(2);
+    expect(value).toContain('\\"');
+  });
+
+  it('una URL hostil en el srcset se escapa igual', () => {
+    const hostil: HeroImage = {
+      ...configured,
+      sources: [{ type: 'image/webp', srcset: 'https://cdn/a.webp");color:red;x:url("y 960w' }],
+    };
+
+    const value = heroImageTokens(hostil, { ...opciones, negotiatesFormat: false })[HERO_IMAGE_TOKEN];
+
+    expect(sinEscapar(value)).toHaveLength(2);
+  });
+
+  it('un type hostil no escapa de su propio type()', () => {
+    const hostil: HeroImage = {
+      ...configured,
+      sources: [
+        { type: 'image/avif");color:red;x:url("y', srcset: 'https://cdn/1920.avif 1920w' },
+        { type: 'image/webp', srcset: SRCSET },
+      ],
+    };
+
+    const value = heroImageTokens(hostil, opciones)[HERO_IMAGE_TOKEN];
+
+    // Cuatro cadenas en la capa AVIF mas dos en la WebP: ocho comillas de
+    // apertura y cierre, ninguna de mas.
+    expect(sinEscapar(value)).toHaveLength(8);
+  });
+
+  it('no toca una URL normal', () => {
+    // El escapado no puede cobrar peaje: lo que ya era valido sale igual.
+    expect(heroImageTokens(configured, { ...opciones, asPoster: true })[HERO_IMAGE_TOKEN]).toBe(
+      'url("https://cdn/960.webp")'
+    );
   });
 });
 

@@ -34,20 +34,38 @@
   /* El primer fotograma del video empaquetado, no una foto aparte: asi el
      momento en que el video arranca no es un corte a otra imagen. */
   --hero-image-src: url('/hero-poster.webp');
-  /* Encuadre. Lo pisa el punto focal que se marca en el panel. */
-  --hero-position: center;
+  /* Encuadre. Lo pisa el punto focal que se marca en el panel; este valor es el
+     de la foto empaquetada y tiene que decir lo mismo que su `focalPoint` en
+     `content/hero.ts` -- es el que se pinta si el JavaScript no llega a correr.
+     No es `center` por el recorte movil: ver el motivo alli. */
+  --hero-position: 40% 50%;
 }
 
-/* AVIF pesa un 15% menos que el WebP del mismo poster. Va detras de un
-   `@supports` y no directo en la regla de arriba porque un `image-set()` que el
-   navegador no entienda invalida la declaracion entera y dejaria el hero sin
-   fondo: es una mejora, no un requisito. */
-@supports (background-image: image-set(url('/hero-poster.avif') type('image/avif'))) {
-  :root {
-    --hero-image-src: image-set(
-      url('/hero-poster.avif') type('image/avif'),
-      url('/hero-poster.webp') type('image/webp')
-    );
+/* AVIF pesa un 15% menos que el WebP del mismo poster, pero solo se ofrece
+   cuando la portada NO va a montar el video, y esa condicion es la que explica
+   las dos envolturas.
+
+   El `@media`: con video, la foto hace de poster de ese video, y `poster` es una
+   sola URL sin negociacion de formato -- el WebP, que entienden todos los
+   navegadores. Ofreciendo aqui el AVIF, el navegador lo pedia al resolver la
+   hoja de estilos, y despues el hero pintaba el WebP del `poster`: dos archivos
+   de la misma imagen, 82 KB que no se pintan nunca. Medido, y en movil pesaban
+   una quinta parte de la primera carga.
+   `prefers-reduced-motion` es la unica condicion del video que se puede
+   expresar en una consulta de medios, y es la misma que decide el `media` de las
+   precargas de index.html: los dos sitios tienen que decir lo mismo.
+
+   El `@supports`: un `image-set()` que el navegador no entienda invalida la
+   declaracion entera y dejaria el hero sin fondo. Es una mejora, no un
+   requisito. */
+@media (prefers-reduced-motion: reduce) {
+  @supports (background-image: image-set(url('/hero-poster.avif') type('image/avif'))) {
+    :root {
+      --hero-image-src: image-set(
+        url('/hero-poster.avif') type('image/avif'),
+        url('/hero-poster.webp') type('image/webp')
+      );
+    }
   }
 }
 
@@ -162,6 +180,23 @@ html[data-ui-mode='cool'] {
      seccion siguiente no arranque con un corte duro.
      Cual es la foto no se decide aqui: este modo solo declara que usa una. */
   --hero-image: var(--hero-image-src);
+  /* Proporcion de la banda con la que este modo muestra la foto en movil.
+     Lo que decide cuanto del cuadro sobrevive a `cover` es la proporcion de la
+     ventana, no su altura: la toma es apaisada (1,93:1), y contra una ventana de
+     telefono entera (0,46:1) quedaba el 24% del ancho ampliado 3,8 veces.
+     A 29/25 -- 1,16:1 -- sobrevive el 60% del ancho del cuadro, que es el minimo
+     con el que entran a la vez la mujer (11-35% del cuadro) y el fuego (43-78%):
+     por debajo de ese 60% no hay encuadre posible que los contenga a los dos,
+     esten donde esten anclados. Ver el reporte del alto en `.hero-band`.
+     El modo sobrio no declara este token a proposito: su hero no lleva foto, y
+     sin proporcion la banda no ocupa alto ninguno. */
+  --hero-band-ratio: 29 / 25;
+  /* Con la banda apilada, el alto de la portada lo pone su contenido: forzar la
+     ventana entera dejaria una franja de superficie vacia debajo de la metadata.
+     Medido a 430x932 con el bloque ya ajustado son 280 puntos de negro muerto,
+     que es mas alto que el propio reclamo. Es la otra mitad de la decision de
+     arriba, y por eso van juntas. */
+  --hero-block-min: auto;
   /* Velo por zonas, no una capa negra pareja. Cada capa resuelve una necesidad
      concreta de legibilidad, y las cuatro se detienen antes del cuadrante del
      fuego (40-80% de ancho, 15-70% de alto): esa zona queda a foto limpia
@@ -262,6 +297,122 @@ html[data-ui-mode='cool'] {
 }
 
 /**
+ * Las dos formas de la portada.
+ *
+ * Desde `md` es una sola: la seccion ocupa la ventana, la foto va a sangre por
+ * detras (`inset: 0`) y el titular flota encima, centrado en vertical.
+ *
+ * Por debajo, en cambio, la foto se recorta contra una ventana en vertical y de
+ * una toma apaisada sobrevive una franja central ampliada casi cuatro veces. Ahi
+ * la seccion se apila: la foto pasa a ser una banda con proporcion propia y el
+ * bloque editorial monta sobre su borde inferior.
+ *
+ * `aspect-ratio` y no una altura en `svh` porque el dato real es la proporcion:
+ * es ella la que decide que fraccion del cuadro sobrevive a `cover`, y asi la
+ * banda dice lo mismo a 390 que a 360 puntos de ancho. Una altura en `svh` no da
+ * esa garantia -- la fraccion visible pasaria a depender del alto del telefono --
+ * y ademas hay un techo fisico: con `cover`, alto y encuadre son la misma
+ * decision. A 1,16:1 sobrevive el 60% del ancho del cuadro, que es justo lo que
+ * miden la mujer y el fuego juntos; pedirle mas alto a la banda es pedirle al
+ * recorte que se coma a uno de los dos. Por eso `svh` entra como techo
+ * (`max-height`) y no como altura.
+ *
+ * Un modo sin foto no gana nada con esta forma -- existe para resolver un
+ * recorte que ahi no ocurre -- y por eso no declara ninguno de los dos tokens:
+ * sin proporcion la banda se queda sin alto, y sin `--hero-block-min` la seccion
+ * sigue siendo el bloque centrado de siempre.
+ */
+.hero-section {
+  display: flex;
+  align-items: center;
+  /* `dvh` y no `vh`: en movil `100vh` cuenta la barra de direcciones y el hero
+     termina cortado hasta que el usuario scrollea. */
+  min-height: 100dvh;
+}
+
+.hero-band {
+  position: absolute;
+  inset: 0;
+}
+
+@media (max-width: 767px) {
+  .hero-section {
+    flex-direction: column;
+    /* En columna `center` alinearia en horizontal y encogeria el titular contra
+       su propio ancho. El reparto horizontal ya lo deciden los tokens del hero. */
+    align-items: stretch;
+    justify-content: center;
+    min-height: var(--hero-block-min, 100dvh);
+  }
+
+  .hero-band {
+    position: relative;
+    inset: auto;
+    aspect-ratio: var(--hero-band-ratio, auto);
+    /* Techo, no altura. La altura util la manda la proporcion, y este valor solo
+       protege el caso apaisado, donde la proporcion pediria mas alto que la
+       ventana entera y el titular quedaria fuera de pantalla.
+       `svh` y no `dvh`: `dvh` cambia cuando el navegador esconde la barra de
+       direcciones, y con el la banda se estiraria a mitad de scroll. */
+    max-height: 62svh;
+  }
+
+  html[data-ui-mode='cool'] {
+    /* Logotipo a escala de portada: es la pieza que cruza el borde del video y
+       cose los dos planos, y para eso tiene que pesar mas que el reclamo.
+       Escala con el ancho (15vw) para que el cruce se vea igual a 360 que a 430,
+       con topes para que no se salga de la caja de texto en los extremos. */
+    --hero-title-size: clamp(3.1rem, 15vw, 4.4rem);
+
+    /* Velo en dos capas, y ninguna oscurece el cuadro entero.
+       La de abajo es la costura: el negro entra en el bajo del video y llega
+       OPACO al borde, asi no queda una linea donde termina el video y empieza la
+       superficie. Entra en el ultimo 42% de la banda -- donde la foto es asfalto
+       y bajo del coche -- y casi todo el peso esta en el ultimo 13%: arranca
+       antes para que la caida se sienta progresiva y no como una franja, pero
+       sigue siendo corta donde importa. El fuego, que ocupa la franja media,
+       queda intacto, y a la altura del logotipo el velo va por el 55%: lo justo
+       para que detras de las letras todavia se lea la imagen, que es lo que hace
+       visible el cruce.
+       La de arriba es la caida donde flota la barra, y en movil pesa mas que en
+       escritorio por una razon medida: aqui la barra lleva marca a la izquierda,
+       y ahi debajo cae el pelo de la mujer, que es lo mas claro del cuadro. Con
+       la caida de escritorio el contraste de esa marca era 3,7:1 -- por debajo
+       del minimo legible. Ocupa los primeros 45 puntos, donde la foto es copa de
+       arbol y pared; el humo y las llamas empiezan mas abajo y no se enteran. */
+    --hero-scrim:
+      linear-gradient(
+        0deg,
+        var(--surface) 0%,
+        color-mix(in srgb, var(--surface) 78%, transparent) 5%,
+        color-mix(in srgb, var(--surface) 42%, transparent) 13%,
+        color-mix(in srgb, var(--surface) 13%, transparent) 27%,
+        transparent 42%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--surface) 78%, transparent) 0%,
+        color-mix(in srgb, var(--surface) 62%, transparent) 12%,
+        color-mix(in srgb, var(--surface) 28%, transparent) 22%,
+        transparent 34%
+      );
+  }
+
+  /* El bloque editorial monta sobre el video en vez de empezar donde el termina:
+     el logotipo queda partido por el borde de la banda -- arriba sobre la imagen
+     que se disuelve, abajo sobre la superficie -- y es ese cruce el que hace que
+     los dos planos se lean como una composicion y no como dos secciones.
+     La sangria se mide en cuerpos del titular y no en pixeles: asi la fraccion
+     que queda sobre la imagen es la misma en cualquier ancho.
+     El relleno superior desaparece porque media el alto de la barra, y aqui la
+     barra ya flota sobre la banda, no sobre el texto. */
+  html[data-ui-mode='cool'] .hero-content {
+    padding-top: 0;
+    margin-top: calc(var(--hero-title-size) * -0.42);
+  }
+}
+
+/**
  * Barra de navegacion. Fondo, desenfoque y linea inferior salen de tokens porque
  * hay modos que la quieren solida y modos que la quieren invisible sobre la foto
  * del hero. Con `transparent` + `none` no queda ninguna franja dibujada arriba.
@@ -270,6 +421,23 @@ html[data-ui-mode='cool'] {
   background-color: var(--surface-nav);
   backdrop-filter: var(--nav-blur);
   border-bottom: 1px solid var(--nav-border);
+  /* La tinta se declara aqui, igual que en `.section--museum`: los enlaces sin
+     clase de color heredan `color`, y `--foreground` ya quedo resuelto en <html>
+     con la tinta del modo. Sin esta linea, redefinir `--ink` sobre la barra no
+     cambiaria nada de lo que no lleva una clase `text-ink/*` explicita. */
+  color: var(--ink);
+}
+
+/* El relevo entre salas ocurre mientras se scrollea. Sin transicion es un corte
+   seco; con ella el cambio acompaña al desplazamiento. Va sobre la barra y no
+   sobre sus hijos a proposito: los que llevan un color propio ya transicionan
+   con `transition-colors`, y los que no lo llevan heredan este. Declararla
+   tambien en los hijos pisaria el `transition` que algunos ya tienen para la
+   opacidad del hover. */
+@media (prefers-reduced-motion: no-preference) {
+  .nav-bar {
+    transition: color 260ms ease;
+  }
 }
 
 /* ── Hero ──────────────────────────────────────────────────────────────────
@@ -333,18 +501,42 @@ html[data-ui-mode] {
   max-width: 24ch;
 }
 
+/* En movil sube de cuerpo y baja de medida. Las dos cosas son la misma decision:
+   debajo de un logotipo a 15vw, un reclamo de 17 puntos en lineas de treinta
+   caracteres se lee como el pie del logotipo. A 23 puntos y tres lineas de dos o
+   tres palabras vuelve a ser la voz que sigue al nombre. Va despues de la regla
+   base y no en la consulta de arriba porque con la misma especificidad gana la
+   ultima que se declara. */
+@media (max-width: 767px) {
+  .hero-claim {
+    font-size: clamp(1.15rem, 5.8vw, 1.55rem);
+    max-width: 18ch;
+  }
+}
+
 /* ── Sala clara ────────────────────────────────────────────────────────────
    Cambio de ritmo despues del hero. En vez de escribir colores nuevos en cada
    componente, la seccion redefine los mismos tokens en su ambito: lo de dentro
    sigue diciendo `bg-surface` y `text-ink` sin enterarse de en que sala esta, y
-   un modo nuevo solo tiene que redefinir estas cuatro lineas. */
-.section--museum {
+   un modo nuevo solo tiene que redefinir estas cuatro lineas.
+
+   La barra comparte el bloque, y no es un caso especial sino la misma regla: es
+   hermana de <main>, asi que flota FUERA del ambito de la seccion y se queda con
+   la tinta del modo -- crema sobre crema en cuanto la sala pasa por debajo. Al
+   entrar en el mismo bloque adopta la paleta de la sala en vez de declarar
+   colores propios, que es lo que la mantiene alineada si la sala cambia.
+   Cuando esta flotando encima lo dice `useMuseumUnderBar`, porque no hay
+   selector de CSS que exprese "que hay detras de este elemento fijo". */
+.section--museum,
+.nav-bar[data-surface='museum'] {
   --surface: #f4f1ec;
   --surface-sunken: #e8e3db;
   --surface-hover: #ede9e2;
   --ink: #17130f;
   --ink-inverse: #f4f1ec;
+}
 
+.section--museum {
   background-color: var(--surface);
   color: var(--ink);
 }
@@ -382,8 +574,9 @@ html[data-ui-mode] {
 }
 
 /* ── Marca en la barra ─────────────────────────────────────────────────────
-   Solo aparece fuera del home: alli el logotipo grande del hero ya dice quien
-   es, y repetirlo arriba carga la pagina sin agregar informacion.
+   Fuera del home siempre; en el home solo en movil, donde el logotipo grande no
+   comparte pantalla con la barra (ver Navigation.tsx). En escritorio ese
+   logotipo esta a la vista junto a la barra y repetirlo no agrega informacion.
    La llama es una foto muy alargada (1:3.87), asi que a esta escala se dimensiona
    por ALTO y el ancho sale de la proporcion; fijar el ancho la dejaria como un
    hilo de dos pixeles. */
