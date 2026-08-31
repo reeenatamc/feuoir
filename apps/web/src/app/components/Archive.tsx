@@ -2,10 +2,18 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TransitionLink } from '../lib/navigation';
 import { useReveal } from '../lib/useReveal';
-import { SERIES_001_OBJECTS } from '../content/objects';
+import { useCurrentSeries } from '../lib/useCatalog';
+import { CatalogStatus } from './CatalogStatus';
+import { ObjectPhoto } from './ObjectPhoto';
 import type { FeuoirObject } from '../content/objects';
-import { CURRENT_SERIES, objectCode, pad2 } from '../content/series';
+import { objectCode, pad2 } from '../content/series';
 import { objectRoute } from '../content/vocabulary';
+
+/**
+ * La vista previa ocupa poco mas de un cuarto del ancho y solo existe desde
+ * `md`, asi que pedir la variante de un tercio de ventana cubre el caso.
+ */
+const PREVIEW_SIZES = '33vw';
 
 /**
  * Una fila del archivo.
@@ -61,12 +69,10 @@ function ArchivePreview({ object }: { object: FeuoirObject | null }) {
     <div className="sticky top-32 aspect-[4/5] overflow-hidden bg-surface-sunken">
       {object && (
         <>
-          {object.image && (
-            <img
-              src={object.image}
-              alt={object.name}
-              loading="lazy"
-              decoding="async"
+          {object.images[0] && (
+            <ObjectPhoto
+              image={object.images[0]}
+              sizes={PREVIEW_SIZES}
               className="absolute inset-0 h-full w-full object-cover"
             />
           )}
@@ -84,10 +90,14 @@ function ArchivePreview({ object }: { object: FeuoirObject | null }) {
 export function Archive() {
   const { t } = useTranslation();
   const { ref, revealed } = useReveal<HTMLDivElement>();
+  const { status, series, objects } = useCurrentSeries();
 
-  // Arranca en la primera pieza y no en `null`: un hueco vacio hasta que alguien
-  // pase el raton se lee como un fallo de carga.
-  const [focused, setFocused] = useState<FeuoirObject>(SERIES_001_OBJECTS[0]);
+  // Lo señalado por el usuario, que hasta que señale algo no existe.
+  const [focused, setFocused] = useState<FeuoirObject | null>(null);
+  // Y lo que se muestra: la primera pieza mientras nadie eligio otra. Se resuelve
+  // al pintar y no con un efecto sobre el listado, porque un hueco vacio hasta
+  // que alguien pase el raton se lee como un fallo de carga.
+  const preview = focused ?? objects[0] ?? null;
 
   return (
     <section className="section--museum min-h-screen px-6 md:px-10 pt-32 md:pt-44 pb-24 md:pb-40">
@@ -99,31 +109,37 @@ export function Archive() {
           <p className="max-w-[34ch] text-sm leading-relaxed text-ink/55 mb-8">
             {t('archivePage.lead')}
           </p>
-          <div className="flex gap-8 text-[10px] tracking-[0.26em] uppercase text-ink/40 tabular-nums">
-            <span>
-              {pad2(CURRENT_SERIES.counts.available)} {t('state.available')}
-            </span>
-            <span>
-              {pad2(CURRENT_SERIES.counts.archived)} {t('state.archived')}
-            </span>
-          </div>
+          {series && (
+            <div className="flex gap-8 text-[10px] tracking-[0.26em] uppercase text-ink/40 tabular-nums">
+              <span>
+                {pad2(series.counts.available)} {t('state.available')}
+              </span>
+              <span>
+                {pad2(series.counts.archived)} {t('state.archived')}
+              </span>
+            </div>
+          )}
         </header>
 
-        <div className="grid grid-cols-12 gap-x-6">
-          {/* Lista limpia, sin retícula de producto: en el archivo la pieza es un
-              registro con su numero y su estado, no una tarjeta de venta. */}
-          <ul className="col-span-12 md:col-span-7">
-            {SERIES_001_OBJECTS.map((object) => (
-              <ArchiveRow key={object.number} object={object} onFocusRow={setFocused} />
-            ))}
-          </ul>
+        {status !== 'ready' ? (
+          <CatalogStatus status={status} />
+        ) : (
+          <div className="grid grid-cols-12 gap-x-6">
+            {/* Lista limpia, sin retícula de producto: en el archivo la pieza es
+                un registro con su numero y su estado, no una tarjeta de venta. */}
+            <ul className="col-span-12 md:col-span-7">
+              {objects.map((object) => (
+                <ArchiveRow key={object.slug} object={object} onFocusRow={setFocused} />
+              ))}
+            </ul>
 
-          {/* La vista previa no existe en tactil: sin cursor no hay nada que
-              señalar, y ocuparia media pantalla sin poder cambiar nunca. */}
-          <div className="hidden md:block md:col-span-4 md:col-start-9">
-            <ArchivePreview object={focused} />
+            {/* La vista previa no existe en tactil: sin cursor no hay nada que
+                señalar, y ocuparia media pantalla sin poder cambiar nunca. */}
+            <div className="hidden md:block md:col-span-4 md:col-start-9">
+              <ArchivePreview object={preview} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );

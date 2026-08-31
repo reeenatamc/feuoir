@@ -1,33 +1,45 @@
-import { SERIES_001_OBJECTS, countByState } from './objects';
-import type { ObjectState } from './objects';
+import { countByState } from './objects';
+import type { FeuoirObject, ObjectState } from './objects';
 
 /**
- * Datos de la serie vigente.
- *
- * Hoy la fuente es el modulo de piezas, pero la forma es la que va a devolver el
- * backend, no una que haya que reescribir despues. Sustitucion prevista:
- * `GET /api/series/current`.
+ * Datos de la serie vigente, tal como los devuelve `GET /api/series/current/`.
  */
 export interface SeriesMeta {
   /** Numero de serie, ya con el formato de la identidad: `001`. */
   number: string;
-  /** Donde se produce. */
-  origin: string;
   year: number;
   /**
-   * Cuantas piezas hay en cada estado. Derivado, nunca escrito a mano: es el
-   * mismo hecho que el listado de piezas, y declararlo aparte garantiza que
-   * tarde o temprano discrepen.
+   * Cuantas piezas hay en cada estado. Derivado del listado que se pinta, nunca
+   * copiado de otro sitio: es el mismo hecho que la lista de piezas, y tomarlo
+   * de otra fuente garantiza que tarde o temprano discrepen.
    */
   counts: Record<ObjectState, number>;
 }
 
-export const CURRENT_SERIES: SeriesMeta = {
-  number: '001',
-  origin: 'Loja — Ecuador',
-  year: 2026,
-  counts: countByState(SERIES_001_OBJECTS),
-};
+/** La serie tal como llega en el JSON. */
+export interface SeriesPayload {
+  number: string;
+  year: number;
+  counts?: Record<string, number>;
+}
+
+/**
+ * Arma la serie a partir de su JSON y del listado de piezas ya traducido.
+ *
+ * El servidor manda sus propios `counts` y aqui se ignoran a proposito. No es
+ * desconfianza: el servidor cuenta las piezas publicadas y la pagina muestra las
+ * que recibio, y esos dos conjuntos pueden diferir por un filtro, una pagina o
+ * una pieza que el frontend descarto por no saber nombrarla. Un encabezado que
+ * dice `05 DISPONIBLE` sobre una lista de cuatro filas es peor que un numero
+ * mas chico: hace dudar de todo lo demas.
+ */
+export function seriesFromPayload(payload: SeriesPayload, objects: FeuoirObject[]): SeriesMeta {
+  return {
+    number: payload.number,
+    year: payload.year,
+    counts: countByState(objects),
+  };
+}
 
 /**
  * Codigo de identidad de una pieza: `S001 / O008 / 2026`.
