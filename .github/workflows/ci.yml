@@ -18,6 +18,30 @@ env:
   NODE_VERSION: "24"
 
 jobs:
+  check:
+    name: Types and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        # npm ci, not install: the lockfile is the point of running this at all.
+        # It is also what catches a phantom dependency -- a package the code
+        # imports but no manifest declares, which resolves locally only because
+        # a sibling workspace drags it in.
+        run: npm ci
+
+      - name: Typecheck both workspaces
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -30,14 +54,45 @@ jobs:
           cache: npm
 
       - name: Install
-        # npm ci, not install: the lockfile is the point of running this at all.
         run: npm ci
 
       - name: Build the API
-        # tsc over the whole Nest project, so this is the type check as much as
-        # it is the build. The repository has no test suite yet; when it gets
-        # one, it belongs in a second job here.
         run: npm run build:api
 
       - name: Build the web app
         run: npm run build:web
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Chrome
+        # The suite runs on `channel: 'chrome'`, which is the browser installed
+        # on the machine rather than one Playwright downloads. The runner has no
+        # Google Chrome, so it is installed here -- and only Chrome, since the
+        # suite checks application behaviour and not cross-browser support.
+        run: npx playwright install --with-deps chrome
+        working-directory: apps/web
+
+      - name: Playwright
+        # Vite is started by the `webServer` block of the config, which does not
+        # reuse an existing server under CI.
+        run: npm run test:e2e
+
+      - name: Keep the report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
