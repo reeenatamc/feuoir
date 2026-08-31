@@ -4,25 +4,27 @@ import { categoryIcon, categoryLabelKey } from '../lib/catalog';
 import type { Product } from '../types';
 import { fire, fireGradient } from '../theme/color';
 
+/**
+ * Vista previa de un producto del catalogo legado de Supabase.
+ *
+ * No lleva boton de comprar. La bolsa del servidor se llena con **variantes**, y
+ * un producto de Supabase no tiene ninguna: es otro almacen, con otro espacio de
+ * identificadores. Un boton aqui solo podria mandar un numero que la API no
+ * reconoce. Lo que se compra son las piezas de la serie, y esas se agregan desde
+ * su ficha. Este modal desaparece con el resto del camino legado.
+ */
 export function Customizer({
   product,
   onClose,
-  onAddToCart,
 }: {
   product: Product | null;
   onClose: () => void;
-  onAddToCart: (product: Product) => void;
 }) {
   const { t } = useTranslation();
 
   if (!product) return null;
 
   const Icon = categoryIcon(product.category);
-
-  const handleAdd = () => {
-    onAddToCart(product);
-    onClose();
-  };
 
   return (
     <div
@@ -65,17 +67,6 @@ export function Customizer({
             )}
             <p className="text-lg tracking-widest">${product.price}</p>
           </div>
-
-          <button
-            onClick={handleAdd}
-            className="w-full py-4 bg-ink text-ink-inverse text-sm tracking-widest uppercase hover:bg-ink/80 active:bg-ink/70 transition-colors relative overflow-hidden group"
-          >
-            <span className="relative z-10">{t('product.addToCart', { price: product.price })}</span>
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{ background: fireGradient([['orange', 12], ['red', 12]]) }}
-            />
-          </button>
 
           <div className="border-t border-ink/6 pt-6 space-y-3">
             <div className="flex items-center justify-between">

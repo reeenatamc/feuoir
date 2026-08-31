@@ -11,37 +11,7 @@ import {
 } from '../content/commissions';
 import type { CommissionRequest, RequiredField } from '../content/commissions';
 import type { Settings } from '../types';
-
-/** Linea fina bajo el campo, sin caja: el registro de la casa no lleva marcos. */
-const FIELD =
-  'w-full bg-transparent border-b border-ink/20 py-3 text-sm outline-none transition-colors focus:border-ink placeholder:text-ink/30';
-const LABEL = 'block text-[10px] tracking-[0.26em] uppercase text-ink/45 mb-1';
-
-function Field({
-  label,
-  error,
-  children,
-  htmlFor,
-}: {
-  label: string;
-  error?: string;
-  children: React.ReactNode;
-  htmlFor: string;
-}) {
-  return (
-    <div className="mb-8">
-      <label className={LABEL} htmlFor={htmlFor}>
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p className="mt-2 text-[10px] tracking-[0.2em] uppercase text-ink/70" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
+import { Field, FIELD } from './FormField';
 
 export function Commissions({ settings }: { settings: Settings }) {
   const { t } = useTranslation();

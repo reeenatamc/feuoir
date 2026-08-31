@@ -9,7 +9,7 @@ import {
   PRODUCT_STATUS_STYLE,
   NEXT_PRODUCT_STATUS,
 } from '../lib/catalog';
-import type { Product, CartItem, Settings } from '../types';
+import type { Product, Settings } from '../types';
 
 const settingsFields = [
   { key: 'businessName', tKey: 'admin.config.businessName', type: 'text',   placeholder: 'Feuoir' },
@@ -20,12 +20,10 @@ const settingsFields = [
 ] as const;
 
 export function AdminPanel({
-  orders,
   settings,
   onUpdateSettings,
   onLogout,
 }: {
-  orders:            CartItem[];
   settings:          Settings;
   onUpdateSettings:  (updates: Partial<Settings>) => void;
   onLogout:          () => void;
@@ -149,7 +147,6 @@ export function AdminPanel({
     setSettingsDirty(true);
   };
 
-  const total       = orders.reduce((s, i) => s + i.product.price, 0);
   const activeCount = products.filter((p) => p.status === 'active').length;
 
   return (
@@ -184,8 +181,11 @@ export function AdminPanel({
           {[
             { label: t('admin.stats.products'), value: products.length },
             { label: t('admin.stats.active'),   value: activeCount },
-            { label: t('admin.stats.orders'),   value: orders.length },
-            { label: t('admin.stats.revenue'),  value: `${settings.currency} ${total}` },
+            // Un guion y no un cero: las ordenes reales viven en el backend
+            // propio y este panel todavia no las lee. "0" seria una afirmacion
+            // sobre las ventas del negocio, y ademas falsa.
+            { label: t('admin.stats.orders'),   value: '—' },
+            { label: t('admin.stats.revenue'),  value: '—' },
           ].map(({ label, value }) => (
             <div key={label} className="bg-surface border border-ink/5 p-4 md:p-6">
               <p className="text-[10px] tracking-[0.3em] uppercase text-ink/30 mb-2">{label}</p>
@@ -331,54 +331,18 @@ export function AdminPanel({
           </div>
         )}
 
-        {/* ── Orders ── */}
+        {/* ── Orders ──
+            La tabla que habia aqui pintaba el carrito LOCAL de este navegador,
+            es decir el del propio admin, no las ventas del negocio. Con la bolsa
+            ya en el servidor ese arreglo no existe, y la tabla se retira en vez
+            de quedarse mostrando siempre cero filas.
+
+            Las ordenes de verdad salen de `GET /api/orders/`, que exige token de
+            sesion: es el panel el que tiene que autenticarse contra el backend
+            propio, y eso es otro trabajo que el de comprar. */}
         {tab === 'orders' && (
-          <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0">
-            {orders.length === 0 ? (
-              <div className="py-16 text-center">
-                <p className="text-sm tracking-wide text-ink/30">{t('admin.table.noOrders')}</p>
-              </div>
-            ) : (
-              <table className="w-full min-w-[400px]">
-                <thead>
-                  <tr className="border-b border-ink/8">
-                    {[
-                      t('admin.table.number'),
-                      t('admin.table.product'),
-                      t('admin.table.price'),
-                      t('admin.table.status'),
-                    ].map((h) => (
-                      <th key={h} className="pb-3 text-[10px] tracking-[0.3em] uppercase text-ink/30 font-normal text-left pr-6 last:pr-0">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((item, i) => (
-                    <tr key={i} className="border-b border-ink/5">
-                      <td className="py-4 pr-6 text-xs text-ink/25 tracking-widest">
-                        #{String(i + 1).padStart(3, '0')}
-                      </td>
-                      <td className="py-4 pr-6 text-sm tracking-wide">{item.product.name}</td>
-                      <td className="py-4 pr-6 text-sm tracking-wide">
-                        {settings.currency} {item.product.price}
-                      </td>
-                      <td className="py-4">
-                        <span className="px-2.5 py-1 text-[10px] tracking-widest uppercase bg-amber-50 text-amber-700 rounded-sm">
-                          {t('admin.table.pendingWA')}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-ink">
-                    <td colSpan={2} className="pt-5 text-xs tracking-[0.3em] uppercase text-ink/40">{t('admin.table.total')}</td>
-                    <td className="pt-5 text-sm font-medium">{settings.currency} {total}</td>
-                    <td />
-                  </tr>
-                </tbody>
-              </table>
-            )}
+          <div className="py-16 text-center">
+            <p className="text-sm tracking-wide text-ink/30">{t('admin.table.noOrders')}</p>
           </div>
         )}
 
