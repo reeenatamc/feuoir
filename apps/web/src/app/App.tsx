@@ -16,7 +16,8 @@ import { Objects } from './components/Objects';
 import { Commissions } from './components/Commissions';
 import { ObjectDetail } from './components/ObjectDetail';
 import { CustomSection } from './components/CustomSection';
-import type { Product, CartItem, Settings } from './types';
+import { CartProvider } from './lib/CartProvider';
+import type { Product, Settings } from './types';
 
 const defaultSettings: Settings = {
   whatsapp: '',
@@ -40,7 +41,6 @@ const FULL_BLEED_ROUTES = new Set(['/']);
 export default function App() {
   const [session, setSession]         = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [cart, setCart]               = useState<CartItem[]>([]);
   const [settings, setSettings]       = useState<Settings>(defaultSettings);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -80,18 +80,17 @@ export default function App() {
     setSettings((prev) => ({ ...prev, ...updates }));
   };
 
-  const handleAddToCart = (product: Product) => {
-    setCart((prev) => [...prev, { product }]);
-  };
-
   const handleLogout = () => supabase.auth.signOut();
 
   const isAuthenticated = !!session;
   const isFullBleed = FULL_BLEED_ROUTES.has(useLocation().pathname);
 
   return (
+    // La bolsa envuelve tambien a la barra: el contador y la pagina de la bolsa
+    // son la misma bolsa, y con un proveedor por vista volverian a discrepar.
+    <CartProvider>
     <div className="min-h-screen bg-surface">
-      <Navigation cartCount={cart.length} />
+      <Navigation />
 
       <main className={isFullBleed ? undefined : 'pt-16 md:pt-20'}>
         <Routes>
@@ -111,8 +110,8 @@ export default function App() {
           {/* Legado: la invitacion a personalizar que habia antes en
               /commissions. Se conserva alcanzable, fuera del menu. */}
           <Route path="/custom"           element={<CustomSection />} />
-          <Route path="/bag"         element={<CartSection cart={cart} settings={settings} />} />
-          <Route path="/cart"        element={<CartSection cart={cart} settings={settings} />} />
+          <Route path="/bag"         element={<CartSection settings={settings} />} />
+          <Route path="/cart"        element={<CartSection settings={settings} />} />
           <Route path="/about"       element={<AboutSection />} />
 
           <Route path="/archive" element={<Archive />} />
@@ -123,12 +122,7 @@ export default function App() {
             path="/admin"
             element={
               <ProtectedRoute isAuthenticated={isAuthenticated} authLoading={authLoading}>
-                {/* TODO: `orders` recibe el carrito LOCAL de este navegador, no las
-                    ordenes reales del negocio. La pestaña "Órdenes" del admin muestra
-                    entonces el carrito del propio admin. Requiere una tabla `orders`
-                    en Supabase (o el endpoint POST /api/orders que ya existe). */}
                 <AdminPanel
-                  orders={cart}
                   settings={settings}
                   onUpdateSettings={handleUpdateSettings}
                   onLogout={handleLogout}
@@ -140,12 +134,9 @@ export default function App() {
       </main>
 
       {selectedProduct && (
-        <Customizer
-          product={selectedProduct}
-          onClose={() => setSelectedProduct(null)}
-          onAddToCart={handleAddToCart}
-        />
+        <Customizer product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
     </div>
+    </CartProvider>
   );
 }

@@ -9,9 +9,8 @@
          y las dos mitades de esa decision estan medidas.
 
          Que se precarga. El fondo puede ser un video, pero un video no puede ser
-         nunca el LCP: lo que se pinta primero es su poster, que ademas es la
-         imagen completa del hero en el telefono, con movimiento reducido y en el
-         instante previo al primer fotograma. Ese poster es lo que se precarga.
+         nunca el LCP: lo que se pinta primero es su poster. Ese poster es lo que
+         se precarga.
 
          Este archivo es estatico y lo que se configure en el panel no se conoce
          hasta que la API responde, asi que precargarlo es imposible desde aqui.
@@ -22,10 +21,39 @@
          panel seria redundante: para entonces ya se escribio el token, que
          dispara exactamente la misma peticion.
 
-         Se precarga el WebP y no el AVIF, aunque el CSS prefiera el AVIF donde
-         se soporte: `poster` de <video> es una sola URL sin negociacion de
-         formato, y el WebP es el archivo que ese atributo nombra. Precargar el
-         AVIF adelantaria la version que el video NO usa.
+         Por que dos lineas y no una. El hero pinta un archivo distinto segun si
+         monta el <video> o no, y precargar el otro son bytes que no se usan:
+
+             con video    el <video> lleva `poster`, que es una sola URL sin
+                          negociacion de formato, y el fondo se alinea con ella
+                          para que el navegador pida un archivo y no dos
+                          -> se pinta el WebP
+             sin video    no hay `poster` que alinear y el fondo negocia formato
+                          con el `@supports` de modes.css
+                          -> se pinta el AVIF donde se soporte
+
+         Lo que decide entre los dos casos es `prefers-reduced-motion`, porque es
+         la unica condicion del video que se puede expresar en una consulta de
+         medios; el modo de interfaz vive en localStorage y desde aqui no se ve.
+         Por eso cada precarga lleva su `media` y son excluyentes: siempre se
+         descarga exactamente una, y siempre la que se va a pintar.
+
+         La misma consulta envuelve al `@supports` del AVIF en modes.css, y no es
+         casualidad: si el CSS ofreciera el AVIF donde va a haber video, el
+         navegador lo pediria al resolver la hoja y despues pintaria el WebP del
+         `poster`. Los dos archivos, uno tirado. Al tocar uno de los dos sitios
+         hay que tocar el otro.
+
+         Antes habia una sola linea, sin `media`, y precargaba el WebP: era
+         correcta mientras el corte fuera por ancho -- el telefono no montaba
+         video y pintaba el AVIF, asi que ese WebP no se pintaba nunca y eran
+         97 KB tirados en la carga donde mas pesan. Ahora el video se monta en
+         todos los anchos (ver HERO_MOTION_QUERY) y el eje ya no es el ancho sino
+         la preferencia de movimiento.
+
+         El `type` de la precarga del AVIF no es decorativo: un navegador que no
+         sepa decodificarlo se salta la precarga en vez de descargar un archivo
+         que despues no puede pintar.
 
          Por que sin prioridad alta. Medido sobre la build de produccion a
          1,6 Mbps y 150 ms de latencia, mediana de cinco vueltas:
@@ -45,7 +73,19 @@
          setecientos milisegundos de una metrica sobre un titular que se lee
          igual: el hero sin foto es superficie oscura con texto claro, no un
          hueco. -->
-    <link rel="preload" as="image" href="/hero-poster.webp" />
+    <link
+      rel="preload"
+      as="image"
+      href="/hero-poster.webp"
+      media="(prefers-reduced-motion: no-preference)"
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      href="/hero-poster.avif"
+      media="(prefers-reduced-motion: reduce)"
+    />
     <title>Feuoir</title>
     <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
   </head>

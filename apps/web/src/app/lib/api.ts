@@ -32,6 +32,10 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+interface ApiErrorOptions extends ErrorOptions {
+  detail?: string | null;
+}
+
 /**
  * Fallo de una llamada a la API, con el codigo HTTP cuando lo hubo.
  *
@@ -42,10 +46,24 @@ export const API_BASE_URL = resolveBaseUrl();
 export class ApiError extends Error {
   readonly status: number;
 
-  constructor(message: string, status: number, options?: ErrorOptions) {
+  /**
+   * El motivo concreto, tal como lo redacto el servidor.
+   *
+   * No sustituye al mensaje de la interfaz: ese sale de i18n y se muestra en el
+   * idioma activo. Este acompaña, porque hay rechazos que solo el backend sabe
+   * explicar -- que variante no esta a la venta, que documento esta mal
+   * formado -- y perderlos deja a quien compra sin saber que corregir.
+   *
+   * `null` cuando el servidor no contesto, o cuando contesto algo que no era
+   * JSON (una traza de error de Django, por ejemplo).
+   */
+  readonly detail: string | null;
+
+  constructor(message: string, status: number, options: ApiErrorOptions = {}) {
     super(message, options);
     this.name = 'ApiError';
     this.status = status;
+    this.detail = options.detail ?? null;
   }
 
   /** `true` cuando el servidor nunca respondio. */
@@ -58,15 +76,58 @@ function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
 
-/** Lectura de un recurso JSON. `path` empieza con barra: `/settings/`. */
-export async function apiGet<T>(path: string, init: RequestInit = {}): Promise<T> {
+/**
+ * El primer mensaje legible de un cuerpo de error.
+ *
+ * El contrato documenta dos formas y las dos hay que saber leer: `{"detail":
+ * "..."}` para los rechazos de negocio y `{"campo": {"sub": ["..."]}}` para los
+ * de validacion. Se busca `detail` antes que el resto para que un cuerpo con
+ * varias claves no devuelva la de al lado.
+ */
+function firstMessage(body: unknown): string | null {
+  if (typeof body === 'string') return body.trim() || null;
+
+  if (Array.isArray(body)) {
+    for (const entry of body) {
+      const message = firstMessage(entry);
+      if (message) return message;
+    }
+    return null;
+  }
+
+  if (body && typeof body === 'object') {
+    const record = body as Record<string, unknown>;
+
+    if ('detail' in record) {
+      const message = firstMessage(record.detail);
+      if (message) return message;
+    }
+
+    for (const value of Object.values(record)) {
+      const message = firstMessage(value);
+      if (message) return message;
+    }
+  }
+
+  return null;
+}
+
+async function readDetail(response: Response): Promise<string | null> {
+  try {
+    return firstMessage(await response.json());
+  } catch {
+    // Un 500 de Django en desarrollo llega como HTML, y un 502 de un proxy
+    // tampoco es JSON. No poder leer el motivo no es motivo para romper.
+    return null;
+  }
+}
+
+/** El viaje en si. Lo comparten la lectura y la escritura. */
+async function request<T>(path: string, init: RequestInit): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: { Accept: 'application/json', ...init.headers },
-    });
+    response = await fetch(`${API_BASE_URL}${path}`, init);
   } catch (cause) {
     // Cancelar una peticion no es un fallo: se propaga tal cual para que quien
     // llama pueda ignorarla en vez de pintar un error que nadie pidio.
@@ -75,8 +136,51 @@ export async function apiGet<T>(path: string, init: RequestInit = {}): Promise<T
   }
 
   if (!response.ok) {
-    throw new ApiError(`${path} respondio ${response.status}.`, response.status);
+    throw new ApiError(`${path} respondio ${response.status}.`, response.status, {
+      detail: await readDetail(response),
+    });
   }
 
   return (await response.json()) as T;
+}
+
+/** Lectura de un recurso JSON. `path` empieza con barra: `/settings/`. */
+export function apiGet<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return request<T>(path, {
+    ...init,
+    headers: { Accept: 'application/json', ...init.headers },
+  });
+}
+
+/** Metodos que modifican. `PUT` no lo usa ningun endpoint del contrato. */
+export type ApiMethod = 'POST' | 'PATCH' | 'DELETE';
+
+export interface SendOptions {
+  /** Cuerpo JSON. Se omite el `Content-Type` cuando no hay nada que mandar. */
+  body?: unknown;
+  /** Cabeceras propias del recurso, como el token de carrito. */
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+}
+
+/**
+ * Escritura. Devuelve el cuerpo de la respuesta ya parseado.
+ *
+ * Todos los endpoints que esta aplicacion escribe contestan con el recurso
+ * actualizado, asi que no hay caso `204` que contemplar: agregarlo seria escribir
+ * una rama que ninguna llamada recorre.
+ */
+export function apiSend<T>(method: ApiMethod, path: string, options: SendOptions = {}): Promise<T> {
+  const { body, headers, signal } = options;
+
+  return request<T>(path, {
+    method,
+    signal,
+    headers: {
+      Accept: 'application/json',
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      ...headers,
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
 }
