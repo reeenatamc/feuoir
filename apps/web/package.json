@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@feuoir/shared": "0.1.0",
     "@fontsource-variable/inter": "5.3.0",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
